@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Three Stones</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="game-shell">
+    <section class="game-card">
+      <header class="game-header">
+        <h1>Three Stones</h1>
+        <p>User vs PC. Place 3 stones, then move them to connected empty nodes. Make 3 in a line to win.</p>
+      </header>
+
+      <section class="score-row" aria-label="Game score">
+        <div class="score-box user-box">
+          <span class="label">You</span>
+          <span><strong id="userCount">0</strong>/3</span>
+        </div>
+        <div class="turn-box" id="turnBox">Your Turn</div>
+        <div class="score-box pc-box">
+          <span class="label">PC</span>
+          <span><strong id="pcCount">0</strong>/3</span>
+        </div>
+      </section>
+
+      <section class="board-wrap" aria-label="Three Stones board">
+        <svg class="board-lines" viewBox="0 0 100 100" aria-hidden="true">
+          <line x1="15" y1="15" x2="50" y2="15"></line>
+          <line x1="50" y1="15" x2="85" y2="15"></line>
+          <line x1="15" y1="50" x2="50" y2="50"></line>
+          <line x1="50" y1="50" x2="85" y2="50"></line>
+          <line x1="15" y1="85" x2="50" y2="85"></line>
+          <line x1="50" y1="85" x2="85" y2="85"></line>
+
+          <line x1="15" y1="15" x2="15" y2="50"></line>
+          <line x1="15" y1="50" x2="15" y2="85"></line>
+          <line x1="50" y1="15" x2="50" y2="50"></line>
+          <line x1="50" y1="50" x2="50" y2="85"></line>
+          <line x1="85" y1="15" x2="85" y2="50"></line>
+          <line x1="85" y1="50" x2="85" y2="85"></line>
+
+          <line x1="15" y1="15" x2="50" y2="50"></line>
+          <line x1="50" y1="50" x2="85" y2="85"></line>
+          <line x1="85" y1="15" x2="50" y2="50"></line>
+          <line x1="50" y1="50" x2="15" y2="85"></line>
+        </svg>
+
+        <div id="board" class="board-nodes"></div>
+      </section>
+
+      <p id="message" class="message">Your turn. Place your first stone.</p>
+
+      <button id="resetBtn" class="reset-btn">New Game</button>
+    </section>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>
