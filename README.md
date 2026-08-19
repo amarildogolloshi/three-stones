@@ -1,23 +1,24 @@
-# Three Stones Online
+# Three Stones v2 Phase 1
 
-This project includes:
+Phase 1 features added:
 
-- Play vs PC
-- Play with Friend using a room code or room link
-- Random Opponent matchmaking
-- 9-node board design
-- Placement phase with 3 stones per player
-- Movement phase after all stones are placed
+- Player name screen
+- PC difficulty: Easy, Medium, Hard
+- Move counter
+- Match timer
+- Sound toggle
+- Place, move, and win sounds
+- Rematch button
+- Dark stones and centered symbols
+- Winning animation
+- Firework victory effect
+- Basic touch and pointer support
+- Existing online room and random opponent support kept
 
-## Install
+## Run
 
 ```bash
 npm install
-```
-
-## Start
-
-```bash
 npm start
 ```
 
@@ -26,13 +27,3 @@ Open:
 ```text
 http://localhost:3000
 ```
-
-## Codespaces
-
-If you want another person to join your room:
-
-1. Run `npm install`
-2. Run `npm start`
-3. Open the forwarded port `3000`
-4. Make the port public
-5. Create a room and send the link or room code

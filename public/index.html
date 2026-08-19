@@ -3,19 +3,41 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Three Stones Online</title>
+  <title>Three Stones v2</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
   <main class="app-shell">
-    <section id="homeScreen" class="screen active">
+    <section id="nameScreen" class="screen active">
       <div class="card hero-card">
         <div class="logo-dot">●</div>
         <h1>Three Stones</h1>
-        <p>
-          Place 3 stones, then move them across connected nodes.
-          First player to make 3 in a line wins.
-        </p>
+        <p>Enter your name, choose a difficulty, and start playing.</p>
+
+        <label class="field-label" for="playerNameInput">Player Name</label>
+        <input id="playerNameInput" maxlength="18" value="Player" />
+
+        <label class="field-label" for="difficultySelect">PC Difficulty</label>
+        <select id="difficultySelect">
+          <option value="easy">Easy</option>
+          <option value="medium" selected>Medium</option>
+          <option value="hard">Hard</option>
+        </select>
+
+        <label class="toggle-row">
+          <input id="soundToggle" type="checkbox" checked />
+          <span>Sound effects</span>
+        </label>
+
+        <button id="continueBtn" class="primary-btn">Continue</button>
+      </div>
+    </section>
+
+    <section id="homeScreen" class="screen">
+      <div class="card hero-card">
+        <div class="logo-dot">●</div>
+        <h1>Three Stones</h1>
+        <p>Place 3 stones, then move them across connected nodes. First player to make 3 in a line wins.</p>
         <button id="playPcBtn" class="primary-btn">Play vs PC</button>
         <button id="playOnlineBtn" class="secondary-btn">Play Online</button>
       </div>
@@ -36,7 +58,6 @@
         <button class="back-btn" data-screen="onlineMenuScreen">← Back</button>
         <h2>Play with Friend</h2>
         <p>Create a room and send the link, or join with a room code.</p>
-
         <button id="createRoomBtn" class="primary-btn">Create Room</button>
 
         <div id="createdRoomBox" class="room-box hidden">
@@ -65,16 +86,14 @@
         <div class="search-icon">🔍</div>
         <h2>Finding Opponent</h2>
         <p id="randomStatus">Searching for an online player...</p>
-        <div class="loader-dots">
-          <span></span>
-          <span></span>
-          <span></span>
-        </div>
+        <div class="loader-dots"><span></span><span></span><span></span></div>
       </div>
     </section>
 
     <section id="gameScreen" class="screen">
       <div class="card game-card">
+        <div id="fireworks" class="fireworks hidden"></div>
+
         <header class="game-header">
           <button id="exitGameBtn" class="back-btn">← Menu</button>
           <h1>Three Stones</h1>
@@ -86,14 +105,18 @@
           <span id="connectionBadge">🟢 Connected</span>
         </div>
 
+        <section class="stats-row">
+          <div>Moves: <strong id="moveCounter">0</strong></div>
+          <div>Time: <strong id="timerDisplay">00:00</strong></div>
+          <div>Difficulty: <strong id="difficultyDisplay">Medium</strong></div>
+        </section>
+
         <section class="score-row" aria-label="Game score">
           <div class="score-box user-box">
             <span id="playerOneLabel">You</span>
             <strong><span id="playerOneCount">0</span>/3</strong>
           </div>
-
           <div id="turnBox" class="turn-box">Your Turn</div>
-
           <div class="score-box opponent-box">
             <span id="playerTwoLabel">PC</span>
             <strong><span id="playerTwoCount">0</span>/3</strong>
@@ -111,12 +134,15 @@
             <line x1="15" y1="15" x2="85" y2="85"></line>
             <line x1="85" y1="15" x2="15" y2="85"></line>
           </svg>
-
           <div id="boardNodes" class="board-nodes"></div>
         </section>
 
         <p id="message" class="message">Your turn.</p>
-        <button id="newGameBtn" class="reset-btn">New Game</button>
+
+        <div class="game-actions">
+          <button id="rematchBtn" class="primary-btn hidden">Rematch</button>
+          <button id="newGameBtn" class="reset-btn">New Game</button>
+        </div>
       </div>
     </section>
   </main>

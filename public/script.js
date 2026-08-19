@@ -45,6 +45,7 @@ const message = document.getElementById("message");
 const turnBox = document.getElementById("turnBox");
 const playerOneCount = document.getElementById("playerOneCount");
 const playerTwoCount = document.getElementById("playerTwoCount");
+const playerOneLabel = document.getElementById("playerOneLabel");
 const playerTwoLabel = document.getElementById("playerTwoLabel");
 const gameModeText = document.getElementById("gameModeText");
 const onlineInfo = document.getElementById("onlineInfo");
@@ -55,8 +56,19 @@ const roomCodeDisplay = document.getElementById("roomCodeDisplay");
 const roomLinkInput = document.getElementById("roomLinkInput");
 const friendStatus = document.getElementById("friendStatus");
 const randomStatus = document.getElementById("randomStatus");
+const playerNameInput = document.getElementById("playerNameInput");
+const difficultySelect = document.getElementById("difficultySelect");
+const soundToggle = document.getElementById("soundToggle");
+const moveCounter = document.getElementById("moveCounter");
+const timerDisplay = document.getElementById("timerDisplay");
+const difficultyDisplay = document.getElementById("difficultyDisplay");
+const rematchBtn = document.getElementById("rematchBtn");
+const fireworks = document.getElementById("fireworks");
 
 let mode = "pc";
+let playerName = "Player";
+let difficulty = "medium";
+let soundEnabled = true;
 let myOnlinePlayer = null;
 let currentRoomId = null;
 let board = Array(9).fill(null);
@@ -66,10 +78,85 @@ let winner = null;
 let winLine = [];
 let selectedNode = null;
 let availableMoves = [];
+let totalMoves = 0;
+let elapsedSeconds = 0;
+let timerId = null;
+let audioContext = null;
 
 function showScreen(screenId) {
   screens.forEach((screen) => screen.classList.remove("active"));
   document.getElementById(screenId).classList.add("active");
+}
+
+function startTimer() {
+  stopTimer();
+  elapsedSeconds = 0;
+  updateTimerDisplay();
+  timerId = setInterval(() => {
+    elapsedSeconds += 1;
+    updateTimerDisplay();
+  }, 1000);
+}
+
+function stopTimer() {
+  if (timerId) {
+    clearInterval(timerId);
+    timerId = null;
+  }
+}
+
+function updateTimerDisplay() {
+  const minutes = String(Math.floor(elapsedSeconds / 60)).padStart(2, "0");
+  const seconds = String(elapsedSeconds % 60).padStart(2, "0");
+  timerDisplay.textContent = `${minutes}:${seconds}`;
+}
+
+function playSound(type) {
+  if (!soundEnabled) return;
+
+  if (!audioContext) {
+    audioContext = new AudioContext();
+  }
+
+  const oscillator = audioContext.createOscillator();
+  const gain = audioContext.createGain();
+  const now = audioContext.currentTime;
+
+  const frequencies = {
+    place: 360,
+    move: 520,
+    win: 760,
+    error: 180
+  };
+
+  oscillator.frequency.setValueAtTime(frequencies[type] || 360, now);
+  oscillator.type = type === "win" ? "triangle" : "sine";
+  gain.gain.setValueAtTime(0.12, now);
+  gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+
+  oscillator.connect(gain);
+  gain.connect(audioContext.destination);
+  oscillator.start(now);
+  oscillator.stop(now + 0.2);
+}
+
+function showFireworks() {
+  fireworks.classList.remove("hidden");
+  fireworks.innerHTML = "";
+
+  for (let i = 0; i < 18; i += 1) {
+    const dot = document.createElement("span");
+    dot.className = "firework";
+    dot.style.left = `${10 + Math.random() * 80}%`;
+    dot.style.top = `${10 + Math.random() * 70}%`;
+    dot.style.background = ["#facc15", "#22c55e", "#38bdf8", "#fb7185"][i % 4];
+    fireworks.appendChild(dot);
+  }
+
+  setTimeout(() => {
+    fireworks.classList.add("hidden");
+    fireworks.innerHTML = "";
+  }, 1200);
 }
 
 function countStones(player) {
@@ -85,13 +172,7 @@ function otherPlayer(player) {
 }
 
 function findWinner(player, testBoard = board) {
-  for (const line of winningLines) {
-    if (line.every((nodeId) => testBoard[nodeId] === player)) {
-      return line;
-    }
-  }
-
-  return null;
+  return winningLines.find((line) => line.every((nodeId) => testBoard[nodeId] === player)) || null;
 }
 
 function getEmptyNeighbors(nodeId, testBoard = board) {
@@ -116,33 +197,26 @@ function renderBoard() {
     button.style.top = `${node.y}%`;
     button.textContent = owner ? "●" : "+";
 
-    if (owner === PLAYER_ONE) {
-      button.classList.add("player-one");
-    }
-
-    if (owner === PLAYER_TWO) {
-      button.classList.add("player-two");
-    }
-
-    if (selectedNode === node.id) {
-      button.classList.add("selected");
-    }
-
-    if (availableMoves.includes(node.id)) {
-      button.classList.add("available");
-    }
-
-    if (winLine.includes(node.id)) {
-      button.classList.add("winning");
-    }
+    if (owner === PLAYER_ONE) button.classList.add("player-one");
+    if (owner === PLAYER_TWO) button.classList.add("player-two");
+    if (selectedNode === node.id) button.classList.add("selected");
+    if (availableMoves.includes(node.id)) button.classList.add("available");
+    if (winLine.includes(node.id)) button.classList.add("winning");
 
     button.disabled = !canClickNode(node.id);
     button.addEventListener("click", () => handleNodeClick(node.id));
+    button.addEventListener("pointerdown", () => handlePointerSelect(node.id));
+    button.addEventListener("pointerup", () => handlePointerRelease(node.id));
+
     boardNodes.appendChild(button);
   });
 
   playerOneCount.textContent = countStones(PLAYER_ONE);
   playerTwoCount.textContent = countStones(PLAYER_TWO);
+  playerOneLabel.textContent = mode === "pc" || myOnlinePlayer === PLAYER_ONE ? playerName : "Friend";
+  playerTwoLabel.textContent = mode === "pc" ? "PC" : myOnlinePlayer === PLAYER_TWO ? playerName : "Friend";
+  moveCounter.textContent = totalMoves;
+  difficultyDisplay.textContent = difficulty[0].toUpperCase() + difficulty.slice(1);
 
   if (winner) {
     turnBox.textContent = "Game Over";
@@ -154,17 +228,13 @@ function renderBoard() {
 }
 
 function canClickNode(nodeId) {
-  if (winner) {
-    return false;
-  }
+  if (winner) return false;
 
   if (mode !== "pc") {
     return currentTurn === myOnlinePlayer;
   }
 
-  if (currentTurn !== PLAYER_ONE) {
-    return false;
-  }
+  if (currentTurn !== PLAYER_ONE) return false;
 
   if (!isMovementPhase()) {
     return board[nodeId] === null && countStones(PLAYER_ONE) < MAX_STONES;
@@ -175,6 +245,20 @@ function canClickNode(nodeId) {
   }
 
   return nodeId === selectedNode || board[nodeId] === PLAYER_ONE || availableMoves.includes(nodeId);
+}
+
+function handlePointerSelect(nodeId) {
+  if (mode === "pc" && isMovementPhase() && board[nodeId] === PLAYER_ONE) {
+    selectedNode = nodeId;
+    availableMoves = getEmptyNeighbors(nodeId);
+    renderBoard();
+  }
+}
+
+function handlePointerRelease(nodeId) {
+  if (mode === "pc" && isMovementPhase() && selectedNode !== null && availableMoves.includes(nodeId)) {
+    moveLocalStone(nodeId);
+  }
 }
 
 function handleNodeClick(nodeId) {
@@ -191,15 +275,13 @@ function handleNodeClick(nodeId) {
 }
 
 function placeLocalStone(nodeId) {
-  if (board[nodeId] !== null) {
-    return;
-  }
+  if (board[nodeId] !== null) return;
 
   board[nodeId] = PLAYER_ONE;
+  totalMoves += 1;
+  playSound("place");
 
-  if (finishLocalTurn(PLAYER_ONE)) {
-    return;
-  }
+  if (finishLocalTurn(PLAYER_ONE)) return;
 
   currentTurn = PLAYER_TWO;
   message.textContent = "PC is thinking...";
@@ -215,7 +297,6 @@ function moveLocalStone(nodeId) {
       message.textContent = "Choose a green connected node.";
       renderBoard();
     }
-
     return;
   }
 
@@ -239,10 +320,10 @@ function moveLocalStone(nodeId) {
     board[nodeId] = PLAYER_ONE;
     selectedNode = null;
     availableMoves = [];
+    totalMoves += 1;
+    playSound("move");
 
-    if (finishLocalTurn(PLAYER_ONE)) {
-      return;
-    }
+    if (finishLocalTurn(PLAYER_ONE)) return;
 
     currentTurn = PLAYER_TWO;
     message.textContent = "PC is thinking...";
@@ -257,7 +338,11 @@ function finishLocalTurn(player) {
   if (line) {
     winner = player;
     winLine = line;
-    message.textContent = player === PLAYER_ONE ? "You win!" : "PC wins!";
+    message.textContent = player === PLAYER_ONE ? `${playerName} wins!` : "PC wins!";
+    playSound("win");
+    stopTimer();
+    showFireworks();
+    rematchBtn.classList.remove("hidden");
     renderBoard();
     return true;
   }
@@ -268,9 +353,11 @@ function finishLocalTurn(player) {
 
     if (getMovableStones(opponent).length === 0) {
       winner = player;
-      message.textContent = player === PLAYER_ONE
-        ? "You win! PC cannot move."
-        : "PC wins! You cannot move.";
+      message.textContent = player === PLAYER_ONE ? `${playerName} wins! PC cannot move.` : "PC wins! You cannot move.";
+      playSound("win");
+      stopTimer();
+      showFireworks();
+      rematchBtn.classList.remove("hidden");
       renderBoard();
       return true;
     }
@@ -280,35 +367,35 @@ function finishLocalTurn(player) {
 }
 
 function handlePcTurn() {
-  if (winner) {
-    return;
-  }
+  if (winner) return;
 
   if (isMovementPhase()) {
     const move = choosePcMovement();
 
     if (!move) {
       winner = PLAYER_ONE;
-      message.textContent = "You win! PC cannot move.";
+      message.textContent = `${playerName} wins! PC cannot move.`;
+      stopTimer();
+      showFireworks();
       renderBoard();
       return;
     }
 
     board[move.from] = null;
     board[move.to] = PLAYER_TWO;
+    playSound("move");
   } else {
     const nodeId = choosePcPlacement();
     board[nodeId] = PLAYER_TWO;
+    playSound("place");
   }
 
-  if (finishLocalTurn(PLAYER_TWO)) {
-    return;
-  }
+  totalMoves += 1;
+
+  if (finishLocalTurn(PLAYER_TWO)) return;
 
   currentTurn = PLAYER_ONE;
-  message.textContent = isMovementPhase()
-    ? "Move phase. Select one stone."
-    : "Your turn.";
+  message.textContent = isMovementPhase() ? "Move phase. Select one stone." : "Your turn.";
   renderBoard();
 }
 
@@ -317,27 +404,26 @@ function choosePcPlacement() {
     .map((owner, index) => (owner === null ? index : null))
     .filter((index) => index !== null);
 
-  for (const nodeId of emptyNodes) {
-    const testBoard = [...board];
-    testBoard[nodeId] = PLAYER_TWO;
-
-    if (findWinner(PLAYER_TWO, testBoard)) {
-      return nodeId;
+  if (difficulty !== "easy") {
+    for (const nodeId of emptyNodes) {
+      const testBoard = [...board];
+      testBoard[nodeId] = PLAYER_TWO;
+      if (findWinner(PLAYER_TWO, testBoard)) return nodeId;
     }
   }
 
-  for (const nodeId of emptyNodes) {
-    const testBoard = [...board];
-    testBoard[nodeId] = PLAYER_ONE;
-
-    if (findWinner(PLAYER_ONE, testBoard)) {
-      return nodeId;
+  if (difficulty === "hard" || difficulty === "medium") {
+    for (const nodeId of emptyNodes) {
+      const testBoard = [...board];
+      testBoard[nodeId] = PLAYER_ONE;
+      if (findWinner(PLAYER_ONE, testBoard)) return nodeId;
     }
   }
 
-  if (board[4] === null) {
-    return 4;
-  }
+  if (difficulty === "hard" && board[4] === null) return 4;
+
+  const corners = [0, 2, 6, 8].filter((nodeId) => board[nodeId] === null);
+  if (difficulty === "hard" && corners.length > 0) return corners[Math.floor(Math.random() * corners.length)];
 
   return emptyNodes[Math.floor(Math.random() * emptyNodes.length)];
 }
@@ -351,15 +437,31 @@ function choosePcMovement() {
     }
   }
 
-  for (const move of possibleMoves) {
-    const testBoard = [...board];
-    testBoard[move.from] = null;
-    testBoard[move.to] = PLAYER_TWO;
-
-    if (findWinner(PLAYER_TWO, testBoard)) {
-      return move;
+  if (difficulty !== "easy") {
+    for (const move of possibleMoves) {
+      const testBoard = [...board];
+      testBoard[move.from] = null;
+      testBoard[move.to] = PLAYER_TWO;
+      if (findWinner(PLAYER_TWO, testBoard)) return move;
     }
   }
+
+  if (difficulty === "hard" || difficulty === "medium") {
+    for (const userFrom of getMovableStones(PLAYER_ONE)) {
+      for (const userTo of getEmptyNeighbors(userFrom)) {
+        const testBoard = [...board];
+        testBoard[userFrom] = null;
+        testBoard[userTo] = PLAYER_ONE;
+        if (findWinner(PLAYER_ONE, testBoard)) {
+          const blockMove = possibleMoves.find((move) => move.to === userTo);
+          if (blockMove) return blockMove;
+        }
+      }
+    }
+  }
+
+  const centerMove = possibleMoves.find((move) => move.to === 4);
+  if (difficulty === "hard" && centerMove) return centerMove;
 
   return possibleMoves[Math.floor(Math.random() * possibleMoves.length)] || null;
 }
@@ -375,12 +477,15 @@ function resetLocalGame() {
   winLine = [];
   selectedNode = null;
   availableMoves = [];
+  totalMoves = 0;
 
   gameModeText.textContent = "Play vs PC";
   playerTwoLabel.textContent = "PC";
   onlineInfo.classList.add("hidden");
+  rematchBtn.classList.add("hidden");
   message.textContent = "Your turn.";
 
+  startTimer();
   renderBoard();
 }
 
@@ -390,15 +495,17 @@ function applyOnlineState(state) {
   phase = state.phase;
   winner = state.winner;
   winLine = state.winLine || [];
+  totalMoves = board.filter(Boolean).length;
 
   if (state.playerCount < 2) {
     message.textContent = "Waiting for another player to join.";
   } else if (winner) {
-    message.textContent = winner === myOnlinePlayer ? "You win!" : "Opponent wins.";
+    message.textContent = winner === myOnlinePlayer ? `${playerName} wins!` : "Opponent wins.";
+    stopTimer();
+    showFireworks();
+    rematchBtn.classList.remove("hidden");
   } else if (currentTurn === myOnlinePlayer) {
-    message.textContent = phase === "moving"
-      ? "Your turn. Move one stone."
-      : "Your turn. Place one stone.";
+    message.textContent = phase === "moving" ? "Your turn. Move one stone." : "Your turn. Place one stone.";
   } else {
     message.textContent = "Waiting for opponent move.";
   }
@@ -406,21 +513,25 @@ function applyOnlineState(state) {
   renderBoard();
 }
 
+document.getElementById("continueBtn").addEventListener("click", () => {
+  playerName = playerNameInput.value.trim() || "Player";
+  difficulty = difficultySelect.value;
+  soundEnabled = soundToggle.checked;
+  showScreen("homeScreen");
+});
+
 document.getElementById("playPcBtn").addEventListener("click", () => {
+  difficulty = difficultySelect.value;
   resetLocalGame();
   showScreen("gameScreen");
 });
 
-document.getElementById("playOnlineBtn").addEventListener("click", () => {
-  showScreen("onlineMenuScreen");
-});
-
-document.getElementById("friendModeBtn").addEventListener("click", () => {
-  showScreen("friendScreen");
-});
+document.getElementById("playOnlineBtn").addEventListener("click", () => showScreen("onlineMenuScreen"));
+document.getElementById("friendModeBtn").addEventListener("click", () => showScreen("friendScreen"));
 
 document.getElementById("randomModeBtn").addEventListener("click", () => {
   mode = "random";
+  startTimer();
   randomStatus.textContent = "Searching for an online player...";
   showScreen("randomScreen");
   socket.emit("random-match");
@@ -428,57 +539,53 @@ document.getElementById("randomModeBtn").addEventListener("click", () => {
 
 document.getElementById("createRoomBtn").addEventListener("click", () => {
   mode = "online";
+  startTimer();
   friendStatus.textContent = "Creating room...";
   socket.emit("create-room");
 });
 
 document.getElementById("joinRoomBtn").addEventListener("click", () => {
   const roomCode = document.getElementById("joinCodeInput").value.trim().toUpperCase();
-
   if (!roomCode) {
     friendStatus.textContent = "Please enter a room code.";
     return;
   }
 
   mode = "online";
+  startTimer();
   friendStatus.textContent = "Joining room...";
   socket.emit("join-room", roomCode);
 });
 
 document.getElementById("copyCodeBtn").addEventListener("click", async () => {
-  if (!currentRoomId) {
-    return;
-  }
-
+  if (!currentRoomId) return;
   await navigator.clipboard.writeText(currentRoomId);
   friendStatus.textContent = "Room code copied.";
 });
 
 document.getElementById("copyLinkBtn").addEventListener("click", async () => {
-  if (!roomLinkInput.value) {
-    return;
-  }
-
+  if (!roomLinkInput.value) return;
   await navigator.clipboard.writeText(roomLinkInput.value);
   friendStatus.textContent = "Room link copied.";
 });
 
 document.getElementById("newGameBtn").addEventListener("click", () => {
-  if (mode === "pc") {
-    resetLocalGame();
-  } else {
-    message.textContent = "For an online rematch, create a new room.";
-  }
+  if (mode === "pc") resetLocalGame();
+  else message.textContent = "For online rematch in Phase 1, create a new room.";
+});
+
+rematchBtn.addEventListener("click", () => {
+  if (mode === "pc") resetLocalGame();
+  else message.textContent = "Online rematch will be added in Phase 2.";
 });
 
 document.getElementById("exitGameBtn").addEventListener("click", () => {
+  stopTimer();
   showScreen("homeScreen");
 });
 
 document.querySelectorAll(".back-btn[data-screen]").forEach((button) => {
-  button.addEventListener("click", () => {
-    showScreen(button.dataset.screen);
-  });
+  button.addEventListener("click", () => showScreen(button.dataset.screen));
 });
 
 socket.on("joined-room", ({ roomId, player, state }) => {
@@ -496,12 +603,7 @@ socket.on("joined-room", ({ roomId, player, state }) => {
   onlineInfo.classList.remove("hidden");
   playerTwoLabel.textContent = "Friend";
   connectionBadge.textContent = "🟢 Connected";
-
   gameModeText.textContent = mode === "random" ? "Random Opponent" : "Play with Friend";
-  randomStatus.textContent = "Opponent found. Starting match...";
-  friendStatus.textContent = player === PLAYER_ONE
-    ? "Room created. Send the link or code to your friend."
-    : "Joined room. Game ready.";
 
   window.history.replaceState({}, "", `/room/${roomId}`);
   showScreen("gameScreen");
@@ -509,10 +611,7 @@ socket.on("joined-room", ({ roomId, player, state }) => {
 });
 
 socket.on("room-state", (state) => {
-  if (!myOnlinePlayer) {
-    return;
-  }
-
+  if (!myOnlinePlayer) return;
   applyOnlineState(state);
 });
 
@@ -529,6 +628,7 @@ socket.on("waiting-random", (text) => {
 socket.on("room-error", (text) => {
   friendStatus.textContent = text;
   message.textContent = text;
+  playSound("error");
 });
 
 socket.on("opponent-left", (text) => {
@@ -540,8 +640,8 @@ const roomMatch = window.location.pathname.match(/^\/room\/([A-Z0-9]+)$/i);
 
 if (roomMatch) {
   mode = "online";
+  startTimer();
   socket.emit("join-room", roomMatch[1]);
-  friendStatus.textContent = "Joining room...";
 } else {
-  resetLocalGame();
+  updateTimerDisplay();
 }

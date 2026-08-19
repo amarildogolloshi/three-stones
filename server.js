@@ -10,8 +10,8 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
-
 const PORT = process.env.PORT || 3000;
+
 const PLAYER_ONE = "player1";
 const PLAYER_TWO = "player2";
 const MAX_STONES = 3;
@@ -89,13 +89,7 @@ function otherPlayer(player) {
 }
 
 function findWinner(board, player) {
-  for (const line of winningLines) {
-    if (line.every((nodeId) => board[nodeId] === player)) {
-      return line;
-    }
-  }
-
-  return null;
+  return winningLines.find((line) => line.every((nodeId) => board[nodeId] === player)) || null;
 }
 
 function getEmptyNeighbors(board, nodeId) {
@@ -170,7 +164,6 @@ function checkGameAfterMove(room, player) {
 
   if (isMovementPhase(room)) {
     room.phase = "moving";
-
     const opponent = otherPlayer(player);
 
     if (getMovableStones(room, opponent).length === 0) {
@@ -180,58 +173,31 @@ function checkGameAfterMove(room, player) {
 }
 
 function handleOnlineAction(socket, data) {
-  const roomId = socket.data.roomId;
+  const room = rooms.get(socket.data.roomId);
   const player = socket.data.player;
-  const room = rooms.get(roomId);
 
-  if (!room || room.winner) {
-    return;
-  }
-
-  if (getPlayerCount(room) < 2) {
-    socket.emit("room-error", "Waiting for another player to join.");
-    return;
-  }
-
-  if (room.currentTurn !== player) {
-    socket.emit("room-error", "It is not your turn.");
-    return;
-  }
+  if (!room || room.winner) return;
+  if (getPlayerCount(room) < 2) return socket.emit("room-error", "Waiting for another player to join.");
+  if (room.currentTurn !== player) return socket.emit("room-error", "It is not your turn.");
 
   const nodeId = Number(data.nodeId);
-
-  if (!Number.isInteger(nodeId) || nodeId < 0 || nodeId > 8) {
-    return;
-  }
+  if (!Number.isInteger(nodeId) || nodeId < 0 || nodeId > 8) return;
 
   if (room.phase === "placing") {
-    handlePlacingMove(room, player, nodeId);
-    return;
-  }
+    if (room.board[nodeId] !== null || countStones(room, player) >= MAX_STONES) return;
 
-  handleMovingMove(socket, room, player, nodeId);
-}
+    room.board[nodeId] = player;
+    checkGameAfterMove(room, player);
 
-function handlePlacingMove(room, player, nodeId) {
-  if (room.board[nodeId] !== null || countStones(room, player) >= MAX_STONES) {
-    return;
-  }
-
-  room.board[nodeId] = player;
-  checkGameAfterMove(room, player);
-
-  if (!room.winner) {
-    room.currentTurn = otherPlayer(player);
-
-    if (isMovementPhase(room)) {
-      room.phase = "moving";
+    if (!room.winner) {
+      room.currentTurn = otherPlayer(player);
+      if (isMovementPhase(room)) room.phase = "moving";
     }
+
+    emitRoomState(room);
+    return;
   }
 
-  emitRoomState(room);
-}
-
-function handleMovingMove(socket, room, player, nodeId) {
   const selected = room.selected[player];
 
   if (selected === undefined || selected === null) {
@@ -248,10 +214,7 @@ function handleMovingMove(socket, room, player, nodeId) {
 
   if (nodeId === selected) {
     room.selected[player] = null;
-    socket.emit("stone-selected", {
-      selectedNode: null,
-      availableMoves: []
-    });
+    socket.emit("stone-selected", { selectedNode: null, availableMoves: [] });
     return;
   }
 
@@ -275,11 +238,7 @@ function handleMovingMove(socket, room, player, nodeId) {
       room.currentTurn = otherPlayer(player);
     }
 
-    io.to(room.id).emit("stone-selected", {
-      selectedNode: null,
-      availableMoves: []
-    });
-
+    io.to(room.id).emit("stone-selected", { selectedNode: null, availableMoves: [] });
     emitRoomState(room);
   }
 }
@@ -288,7 +247,6 @@ io.on("connection", (socket) => {
   socket.on("create-room", () => {
     const roomId = createRoomId();
     const room = createRoom(roomId);
-
     rooms.set(roomId, room);
     joinRoom(socket, roomId);
   });
@@ -305,7 +263,6 @@ io.on("connection", (socket) => {
       if (waitingSocket) {
         const roomId = createRoomId();
         const room = createRoom(roomId);
-
         rooms.set(roomId, room);
         joinRoom(waitingSocket, roomId);
         joinRoom(socket, roomId);
@@ -318,35 +275,23 @@ io.on("connection", (socket) => {
     socket.emit("waiting-random", "Searching for an online player...");
   });
 
-  socket.on("online-action", (data) => {
-    handleOnlineAction(socket, data || {});
-  });
+  socket.on("online-action", (data) => handleOnlineAction(socket, data || {}));
 
   socket.on("disconnect", () => {
-    if (waitingSocketId === socket.id) {
-      waitingSocketId = null;
-    }
+    if (waitingSocketId === socket.id) waitingSocketId = null;
 
-    const roomId = socket.data.roomId;
+    const room = rooms.get(socket.data.roomId);
     const player = socket.data.player;
 
-    if (!roomId || !player) {
-      return;
-    }
-
-    const room = rooms.get(roomId);
-
-    if (!room) {
-      return;
-    }
+    if (!room || !player) return;
 
     delete room.players[socket.id];
     delete room.sockets[player];
 
-    socket.to(roomId).emit("opponent-left", "Opponent left the game.");
+    socket.to(room.id).emit("opponent-left", "Opponent left the game.");
 
     if (getPlayerCount(room) === 0) {
-      rooms.delete(roomId);
+      rooms.delete(room.id);
     } else {
       emitRoomState(room);
     }
