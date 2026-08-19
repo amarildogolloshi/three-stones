@@ -44,17 +44,15 @@ let waitingSocketId = null;
 
 app.use(express.static(path.join(__dirname, "public")));
 
-app.get("/room/:roomId", (_req, res) => {
+app.get("/room/:roomId", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
 function createRoomId() {
   let roomId;
-
   do {
     roomId = Math.random().toString(36).slice(2, 8).toUpperCase();
   } while (rooms.has(roomId));
-
   return roomId;
 }
 
@@ -125,7 +123,6 @@ function emitRoomState(room) {
 
 function joinRoom(socket, roomId) {
   let room = rooms.get(roomId);
-
   if (!room) {
     room = createRoom(roomId);
     rooms.set(roomId, room);
@@ -137,7 +134,6 @@ function joinRoom(socket, roomId) {
   }
 
   let player = room.players[socket.id];
-
   if (!player) {
     player = room.sockets[PLAYER_ONE] ? PLAYER_TWO : PLAYER_ONE;
     room.players[socket.id] = player;
@@ -159,7 +155,6 @@ function joinRoom(socket, roomId) {
 
 function checkGameAfterMove(room, player) {
   const winLine = findWinner(room.board, player);
-
   if (winLine) {
     room.winner = player;
     room.winLine = winLine;
@@ -169,7 +164,6 @@ function checkGameAfterMove(room, player) {
   if (isMovementPhase(room)) {
     room.phase = "moving";
     const opponent = otherPlayer(player);
-
     if (getMovableStones(room, opponent).length === 0) {
       room.winner = player;
     }
@@ -179,7 +173,6 @@ function checkGameAfterMove(room, player) {
 function handleOnlineAction(socket, data) {
   const room = rooms.get(socket.data.roomId);
   const player = socket.data.player;
-
   if (!room || room.winner) return;
   if (getPlayerCount(room) < 2) return socket.emit("room-error", "Waiting for another player to join.");
   if (room.currentTurn !== player) return socket.emit("room-error", "It is not your turn.");
@@ -189,23 +182,19 @@ function handleOnlineAction(socket, data) {
 
   if (room.phase === "placing") {
     if (room.board[nodeId] !== null || countStones(room, player) >= MAX_STONES) return;
-
     room.board[nodeId] = player;
     room.moveCount += 1;
     room.rematchVotes.clear();
     checkGameAfterMove(room, player);
-
     if (!room.winner) {
       room.currentTurn = otherPlayer(player);
       if (isMovementPhase(room)) room.phase = "moving";
     }
-
     emitRoomState(room);
     return;
   }
 
   const selected = room.selected[player];
-
   if (selected === undefined || selected === null) {
     if (room.board[nodeId] === player && getEmptyNeighbors(room.board, nodeId).length > 0) {
       room.selected[player] = nodeId;
@@ -239,11 +228,9 @@ function handleOnlineAction(socket, data) {
     room.moveCount += 1;
     room.rematchVotes.clear();
     checkGameAfterMove(room, player);
-
     if (!room.winner) {
       room.currentTurn = otherPlayer(player);
     }
-
     io.to(room.id).emit("stone-selected", { selectedNode: null, availableMoves: [] });
     emitRoomState(room);
   }
@@ -264,7 +251,6 @@ function handleRematchRequest(socket) {
   const room = rooms.get(socket.data.roomId);
   const player = socket.data.player;
   if (!room || !player) return;
-
   room.rematchVotes.add(player);
 
   if (room.rematchVotes.size >= 2 && getPlayerCount(room) === 2) {
@@ -289,15 +275,12 @@ io.on("connection", (socket) => {
     joinRoom(socket, roomId);
   });
 
-  socket.on("join-room", (roomId) => {
-    joinRoom(socket, String(roomId).trim().toUpperCase());
-  });
+  socket.on("join-room", (roomId) => joinRoom(socket, String(roomId).trim().toUpperCase()));
 
   socket.on("random-match", () => {
     if (waitingSocketId && waitingSocketId !== socket.id) {
       const waitingSocket = io.sockets.sockets.get(waitingSocketId);
       waitingSocketId = null;
-
       if (waitingSocket) {
         const roomId = createRoomId();
         const room = createRoom(roomId);
@@ -305,10 +288,8 @@ io.on("connection", (socket) => {
         joinRoom(waitingSocket, roomId);
         joinRoom(socket, roomId);
       }
-
       return;
     }
-
     waitingSocketId = socket.id;
     socket.emit("waiting-random", "Searching for an online player...");
   });
@@ -318,15 +299,12 @@ io.on("connection", (socket) => {
 
   socket.on("disconnect", () => {
     if (waitingSocketId === socket.id) waitingSocketId = null;
-
     const room = rooms.get(socket.data.roomId);
     const player = socket.data.player;
     if (!room || !player) return;
-
     delete room.players[socket.id];
     delete room.sockets[player];
     socket.to(room.id).emit("opponent-left", "Opponent left the game.");
-
     if (getPlayerCount(room) === 0) rooms.delete(room.id);
     else emitRoomState(room);
   });

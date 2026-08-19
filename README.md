@@ -1,19 +1,22 @@
-# Three Stones v2.5.1 Regular Format
+# Three Stones v2.6.1 AI Coach Safe
 
-This rebuild keeps the project files readable and normally formatted.
+This version rebuilds AI Coach from the stable v2.5.1 puzzle-fix version.
 
-## Features
+## Safe AI Coach behavior
+
+The coach panel only reads the final board and gives feedback after a game or puzzle finishes. It does not control movement, online gameplay, puzzle validation, rematch flow, or tournament advancement.
+
+## Included
 
 - Play vs PC
-- Play online with a friend by room code/link
-- Random online opponent
+- Play online with room code/link
+- Random opponent
 - Online rematch
-- Fixed Daily Puzzle mode
-- Practice puzzles
-- Local tournament mode
-- Player name, difficulty, timer, sound toggle, move counter
-- Rankings, stats, and match history in localStorage
-- Themes and piece sets saved in localStorage
+- Fixed Daily Puzzle and Practice Puzzle
+- Tournament mode
+- Ranking and stats
+- Themes and pieces
+- AI Coach feedback panel
 
 ## Run
 
