@@ -1,0 +1,19 @@
+{
+  "name": "Three Stones",
+  "short_name": "Three Stones",
+  "description": "A strategic three-stone board game with online play and puzzles.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#08111f",
+  "theme_color": "#0f172a",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

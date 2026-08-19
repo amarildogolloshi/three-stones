@@ -1,21 +1,28 @@
-# Three Stones v2.6.1 AI Coach Safe
+# Three Stones v2.7 PWA Polish
 
-This version rebuilds AI Coach from the stable v2.5.1 puzzle-fix version.
+This version adds safe PWA polish on top of the Three Stones game.
 
-## Safe AI Coach behavior
+## Added in v2.7
 
-The coach panel only reads the final board and gives feedback after a game or puzzle finishes. It does not control movement, online gameplay, puzzle validation, rematch flow, or tournament advancement.
+- Installable app support
+- `manifest.json`
+- `service-worker.js`
+- Offline cache for main files
+- App icon SVG
+- Help / Rules screen
+- PWA install button
+- Safe UI polish without changing core game rules
 
-## Included
+## Included Game Modes
 
 - Play vs PC
-- Play online with room code/link
-- Random opponent
-- Online rematch
-- Fixed Daily Puzzle and Practice Puzzle
-- Tournament mode
-- Ranking and stats
-- Themes and pieces
+- Play Online with room code/link
+- Random Opponent
+- Daily Puzzle
+- Practice Puzzle
+- Tournament screen
+- Stats and ranking panel
+- Themes and piece sets
 - AI Coach feedback panel
 
 ## Run

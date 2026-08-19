@@ -3,7 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Three Stones v2.5.1</title>
+  <meta name="theme-color" content="#0f172a" />
+  <title>Three Stones v2.7</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body class="theme-classic pieces-dots">
@@ -13,18 +16,22 @@
         <div class="logo-dot">●</div>
         <h1>Three Stones</h1>
         <p>Enter your name, choose a difficulty, and start playing.</p>
+
         <label class="field-label" for="playerNameInput">Player Name</label>
         <input id="playerNameInput" maxlength="18" value="Player" />
+
         <label class="field-label" for="difficultySelect">PC Difficulty</label>
         <select id="difficultySelect">
           <option value="easy">Easy</option>
           <option value="medium" selected>Medium</option>
           <option value="hard">Hard</option>
         </select>
+
         <label class="toggle-row">
           <input id="soundToggle" type="checkbox" checked />
           <span>Sound effects</span>
         </label>
+
         <button id="continueBtn" class="primary-btn">Continue</button>
       </div>
     </section>
@@ -34,7 +41,8 @@
         <div class="logo-dot">●</div>
         <h1>Three Stones</h1>
         <p>Place 3 stones, then move them across connected nodes. First player to make 3 in a line wins.</p>
-        <section class="stats-card" id="homeStatsCard">
+
+        <section class="stats-card">
           <h3>Your Ranking</h3>
           <div class="rank-line">
             <span id="rankTitle">Bronze</span>
@@ -46,12 +54,29 @@
             <span>Win Rate: <strong id="statWinRate">0%</strong></span>
           </div>
         </section>
+
         <button id="playPcBtn" class="primary-btn">Play vs PC</button>
         <button id="playOnlineBtn" class="secondary-btn">Play Online</button>
         <button id="dailyPuzzleBtn" class="secondary-btn">Daily Puzzle</button>
         <button id="tournamentBtn" class="secondary-btn">Tournament</button>
         <button id="statsBtn" class="secondary-btn">Stats & History</button>
         <button id="customizeBtn" class="secondary-btn">Themes & Pieces</button>
+        <button id="rulesBtn" class="secondary-btn">Rules</button>
+        <button id="installBtn" class="primary-btn hidden">Install App</button>
+      </div>
+    </section>
+
+    <section id="rulesScreen" class="screen">
+      <div class="card menu-card">
+        <button class="back-btn" data-screen="homeScreen">← Back</button>
+        <h2>Rules</h2>
+        <ol class="rules-list">
+          <li>Each player places 3 stones on empty nodes.</li>
+          <li>After all 6 stones are placed, players move one stone per turn.</li>
+          <li>A stone may move only to a connected empty node.</li>
+          <li>The first player to make 3 stones in a straight line wins.</li>
+          <li>The center node connects to every other node.</li>
+        </ol>
       </div>
     </section>
 
@@ -75,13 +100,16 @@
         <button class="back-btn" data-screen="homeScreen">← Back</button>
         <h2>Tournament</h2>
         <p>Create a local bracket and play each match against the PC.</p>
+
         <label class="field-label" for="tournamentSizeSelect">Tournament Size</label>
         <select id="tournamentSizeSelect">
           <option value="4">4 Players</option>
           <option value="8">8 Players</option>
         </select>
+
         <label class="field-label" for="tournamentNamesInput">Player Names</label>
         <textarea id="tournamentNamesInput" rows="5" placeholder="Player 1&#10;Player 2&#10;Player 3&#10;Player 4"></textarea>
+
         <button id="startTournamentBtn" class="primary-btn">Start Tournament</button>
         <section id="tournamentBracket" class="bracket-box hidden">
           <h3 id="tournamentRoundTitle">Round 1</h3>
@@ -96,7 +124,6 @@
       <div class="card menu-card">
         <button class="back-btn" data-screen="homeScreen">← Back</button>
         <h2>Themes & Pieces</h2>
-        <p>Customize the board and stone style. Your choice is saved in this browser.</p>
         <div class="customize-grid">
           <label>Board Theme
             <select id="themeSelect">
@@ -118,14 +145,6 @@
             </select>
           </label>
         </div>
-        <section class="theme-preview" aria-label="Theme preview">
-          <div class="preview-board">
-            <div class="preview-line horizontal"></div>
-            <div class="preview-line vertical"></div>
-            <div class="preview-piece preview-player-one" id="previewPieceOne">●</div>
-            <div class="preview-piece preview-player-two" id="previewPieceTwo">●</div>
-          </div>
-        </section>
         <button id="saveThemeBtn" class="primary-btn">Save Theme</button>
         <button id="resetThemeBtn" class="secondary-btn">Reset Theme</button>
       </div>
@@ -135,14 +154,12 @@
       <div class="card menu-card">
         <button class="back-btn" data-screen="homeScreen">← Back</button>
         <h2>Stats & History</h2>
-        <p>Your stats are saved in this browser.</p>
         <section class="stats-grid">
           <div><span>Rank</span><strong id="detailRankTitle">Bronze</strong></div>
           <div><span>Ranking Points</span><strong id="detailRankPoints">1000</strong></div>
           <div><span>Games Played</span><strong id="detailGames">0</strong></div>
           <div><span>Wins</span><strong id="detailWins">0</strong></div>
           <div><span>Losses</span><strong id="detailLosses">0</strong></div>
-          <div><span>Draws</span><strong id="detailDraws">0</strong></div>
           <div><span>Win Rate</span><strong id="detailWinRate">0%</strong></div>
           <div><span>Best Time</span><strong id="detailBestTime">--:--</strong></div>
           <div><span>Fewest Moves</span><strong id="detailFewestMoves">--</strong></div>
@@ -157,7 +174,6 @@
       <div class="card menu-card">
         <button class="back-btn" data-screen="homeScreen">← Back</button>
         <h2>Play Online</h2>
-        <p>Choose how you want to play with another person.</p>
         <button id="friendModeBtn" class="primary-btn">Play with Friend</button>
         <button id="randomModeBtn" class="secondary-btn">Random Opponent</button>
       </div>
@@ -167,7 +183,6 @@
       <div class="card menu-card">
         <button class="back-btn" data-screen="onlineMenuScreen">← Back</button>
         <h2>Play with Friend</h2>
-        <p>Create a room and send the link, or join with a room code.</p>
         <button id="createRoomBtn" class="primary-btn">Create Room</button>
         <div id="createdRoomBox" class="room-box hidden">
           <span class="small-label">Room Code</span>
@@ -214,12 +229,12 @@
           <div>Time: <strong id="timerDisplay">00:00</strong></div>
           <div>Difficulty: <strong id="difficultyDisplay">Medium</strong></div>
         </section>
-        <section class="score-row" aria-label="Game score">
+        <section class="score-row">
           <div class="score-box user-box"><span id="playerOneLabel">You</span><strong><span id="playerOneCount">0</span>/3</strong></div>
           <div id="turnBox" class="turn-box">Your Turn</div>
           <div class="score-box opponent-box"><span id="playerTwoLabel">PC</span><strong><span id="playerTwoCount">0</span>/3</strong></div>
         </section>
-        <section class="board-wrap" aria-label="Three Stones board">
+        <section class="board-wrap">
           <svg class="board-lines" viewBox="0 0 100 100" aria-hidden="true">
             <line x1="15" y1="15" x2="85" y2="15"></line>
             <line x1="15" y1="50" x2="85" y2="50"></line>
@@ -233,9 +248,9 @@
           <div id="boardNodes" class="board-nodes"></div>
         </section>
         <p id="message" class="message">Your turn.</p>
-        <section id="coachPanel" class="coach-panel hidden" aria-label="AI Coach analysis">
+        <section id="coachPanel" class="coach-panel hidden">
           <h3>AI Coach</h3>
-          <p id="coachSummary">Play a match to get coach feedback.</p>
+          <p id="coachSummary">Play a match to get feedback.</p>
           <ul id="coachList"></ul>
         </section>
         <div class="game-actions">

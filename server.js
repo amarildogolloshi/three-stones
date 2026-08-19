@@ -44,7 +44,7 @@ let waitingSocketId = null;
 
 app.use(express.static(path.join(__dirname, "public")));
 
-app.get("/room/:roomId", (req, res) => {
+app.get("/room/:roomId", (_req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
@@ -92,17 +92,11 @@ function findWinner(board, player) {
   return winningLines.find((line) => line.every((nodeId) => board[nodeId] === player)) || null;
 }
 
-function getEmptyNeighbors(board, nodeId) {
+function emptyNeighbors(board, nodeId) {
   return neighbors[nodeId].filter((neighborId) => board[neighborId] === null);
 }
 
-function getMovableStones(room, player) {
-  return room.board
-    .map((owner, index) => (owner === player ? index : null))
-    .filter((nodeId) => nodeId !== null && getEmptyNeighbors(room.board, nodeId).length > 0);
-}
-
-function getPublicRoomState(room) {
+function publicState(room) {
   return {
     roomId: room.id,
     board: room.board,
@@ -111,14 +105,13 @@ function getPublicRoomState(room) {
     winner: room.winner,
     winLine: room.winLine,
     moveCount: room.moveCount,
-    rematchVotes: Array.from(room.rematchVotes),
     playerCount: getPlayerCount(room),
-    maxPlayers: 2
+    rematchVotes: Array.from(room.rematchVotes)
   };
 }
 
-function emitRoomState(room) {
-  io.to(room.id).emit("room-state", getPublicRoomState(room));
+function emitRoom(room) {
+  io.to(room.id).emit("room-state", publicState(room));
 }
 
 function joinRoom(socket, roomId) {
@@ -143,41 +136,33 @@ function joinRoom(socket, roomId) {
   socket.join(room.id);
   socket.data.roomId = room.id;
   socket.data.player = player;
-
-  socket.emit("joined-room", {
-    roomId: room.id,
-    player,
-    state: getPublicRoomState(room)
-  });
-
-  emitRoomState(room);
+  socket.emit("joined-room", { roomId: room.id, player, state: publicState(room) });
+  emitRoom(room);
 }
 
-function checkGameAfterMove(room, player) {
-  const winLine = findWinner(room.board, player);
-  if (winLine) {
+function finishTurn(room, player) {
+  const win = findWinner(room.board, player);
+  if (win) {
     room.winner = player;
-    room.winLine = winLine;
+    room.winLine = win;
     return;
   }
 
   if (isMovementPhase(room)) {
     room.phase = "moving";
-    const opponent = otherPlayer(player);
-    if (getMovableStones(room, opponent).length === 0) {
-      room.winner = player;
-    }
   }
+
+  room.currentTurn = otherPlayer(player);
 }
 
 function handleOnlineAction(socket, data) {
   const room = rooms.get(socket.data.roomId);
   const player = socket.data.player;
-  if (!room || room.winner) return;
-  if (getPlayerCount(room) < 2) return socket.emit("room-error", "Waiting for another player to join.");
-  if (room.currentTurn !== player) return socket.emit("room-error", "It is not your turn.");
-
   const nodeId = Number(data.nodeId);
+
+  if (!room || room.winner) return;
+  if (getPlayerCount(room) < 2) return socket.emit("room-error", "Waiting for opponent.");
+  if (room.currentTurn !== player) return socket.emit("room-error", "It is not your turn.");
   if (!Number.isInteger(nodeId) || nodeId < 0 || nodeId > 8) return;
 
   if (room.phase === "placing") {
@@ -185,22 +170,19 @@ function handleOnlineAction(socket, data) {
     room.board[nodeId] = player;
     room.moveCount += 1;
     room.rematchVotes.clear();
-    checkGameAfterMove(room, player);
-    if (!room.winner) {
-      room.currentTurn = otherPlayer(player);
-      if (isMovementPhase(room)) room.phase = "moving";
-    }
-    emitRoomState(room);
+    finishTurn(room, player);
+    emitRoom(room);
     return;
   }
 
   const selected = room.selected[player];
+
   if (selected === undefined || selected === null) {
-    if (room.board[nodeId] === player && getEmptyNeighbors(room.board, nodeId).length > 0) {
+    if (room.board[nodeId] === player && emptyNeighbors(room.board, nodeId).length > 0) {
       room.selected[player] = nodeId;
       socket.emit("stone-selected", {
         selectedNode: nodeId,
-        availableMoves: getEmptyNeighbors(room.board, nodeId)
+        availableMoves: emptyNeighbors(room.board, nodeId)
       });
     }
     return;
@@ -212,31 +194,28 @@ function handleOnlineAction(socket, data) {
     return;
   }
 
-  if (room.board[nodeId] === player && getEmptyNeighbors(room.board, nodeId).length > 0) {
+  if (room.board[nodeId] === player && emptyNeighbors(room.board, nodeId).length > 0) {
     room.selected[player] = nodeId;
     socket.emit("stone-selected", {
       selectedNode: nodeId,
-      availableMoves: getEmptyNeighbors(room.board, nodeId)
+      availableMoves: emptyNeighbors(room.board, nodeId)
     });
     return;
   }
 
-  if (room.board[nodeId] === null && getEmptyNeighbors(room.board, selected).includes(nodeId)) {
+  if (room.board[nodeId] === null && emptyNeighbors(room.board, selected).includes(nodeId)) {
     room.board[selected] = null;
     room.board[nodeId] = player;
     room.selected[player] = null;
     room.moveCount += 1;
     room.rematchVotes.clear();
-    checkGameAfterMove(room, player);
-    if (!room.winner) {
-      room.currentTurn = otherPlayer(player);
-    }
+    finishTurn(room, player);
     io.to(room.id).emit("stone-selected", { selectedNode: null, availableMoves: [] });
-    emitRoomState(room);
+    emitRoom(room);
   }
 }
 
-function resetRoomForRematch(room) {
+function resetRoom(room) {
   room.board = Array(9).fill(null);
   room.currentTurn = PLAYER_ONE;
   room.phase = "placing";
@@ -247,69 +226,66 @@ function resetRoomForRematch(room) {
   room.rematchVotes.clear();
 }
 
-function handleRematchRequest(socket) {
-  const room = rooms.get(socket.data.roomId);
-  const player = socket.data.player;
-  if (!room || !player) return;
-  room.rematchVotes.add(player);
-
-  if (room.rematchVotes.size >= 2 && getPlayerCount(room) === 2) {
-    resetRoomForRematch(room);
-    io.to(room.id).emit("rematch-started", getPublicRoomState(room));
-    emitRoomState(room);
-    return;
-  }
-
-  io.to(room.id).emit("rematch-status", {
-    requestedBy: player,
-    votes: Array.from(room.rematchVotes),
-    needed: 2
-  });
-}
-
 io.on("connection", (socket) => {
-  socket.on("create-room", () => {
-    const roomId = createRoomId();
-    const room = createRoom(roomId);
-    rooms.set(roomId, room);
-    joinRoom(socket, roomId);
-  });
+  socket.on("create-room", () => joinRoom(socket, createRoomId()));
 
-  socket.on("join-room", (roomId) => joinRoom(socket, String(roomId).trim().toUpperCase()));
+  socket.on("join-room", (roomId) => {
+    joinRoom(socket, String(roomId).trim().toUpperCase());
+  });
 
   socket.on("random-match", () => {
     if (waitingSocketId && waitingSocketId !== socket.id) {
-      const waitingSocket = io.sockets.sockets.get(waitingSocketId);
+      const otherSocket = io.sockets.sockets.get(waitingSocketId);
       waitingSocketId = null;
-      if (waitingSocket) {
+      if (otherSocket) {
         const roomId = createRoomId();
-        const room = createRoom(roomId);
-        rooms.set(roomId, room);
-        joinRoom(waitingSocket, roomId);
+        rooms.set(roomId, createRoom(roomId));
+        joinRoom(otherSocket, roomId);
         joinRoom(socket, roomId);
       }
       return;
     }
+
     waitingSocketId = socket.id;
     socket.emit("waiting-random", "Searching for an online player...");
   });
 
   socket.on("online-action", (data) => handleOnlineAction(socket, data || {}));
-  socket.on("request-rematch", () => handleRematchRequest(socket));
+
+  socket.on("request-rematch", () => {
+    const room = rooms.get(socket.data.roomId);
+    const player = socket.data.player;
+    if (!room || !player) return;
+
+    room.rematchVotes.add(player);
+    if (room.rematchVotes.size >= 2 && getPlayerCount(room) === 2) {
+      resetRoom(room);
+      io.to(room.id).emit("rematch-started", publicState(room));
+      emitRoom(room);
+      return;
+    }
+
+    io.to(room.id).emit("rematch-status", {
+      votes: Array.from(room.rematchVotes),
+      needed: 2
+    });
+  });
 
   socket.on("disconnect", () => {
     if (waitingSocketId === socket.id) waitingSocketId = null;
     const room = rooms.get(socket.data.roomId);
     const player = socket.data.player;
     if (!room || !player) return;
+
     delete room.players[socket.id];
     delete room.sockets[player];
     socket.to(room.id).emit("opponent-left", "Opponent left the game.");
+
     if (getPlayerCount(room) === 0) rooms.delete(room.id);
-    else emitRoomState(room);
+    else emitRoom(room);
   });
 });
 
 server.listen(PORT, () => {
-  console.log(`Three Stones server running on http://localhost:${PORT}`);
+  console.log(`Three Stones running at http://localhost:${PORT}`);
 });
