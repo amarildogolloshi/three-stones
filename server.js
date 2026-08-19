@@ -68,7 +68,9 @@ function createRoom(roomId) {
     phase: "placing",
     selected: {},
     winner: null,
-    winLine: []
+    winLine: [],
+    moveCount: 0,
+    rematchVotes: new Set()
   };
 }
 
@@ -110,6 +112,8 @@ function getPublicRoomState(room) {
     phase: room.phase,
     winner: room.winner,
     winLine: room.winLine,
+    moveCount: room.moveCount,
+    rematchVotes: Array.from(room.rematchVotes),
     playerCount: getPlayerCount(room),
     maxPlayers: 2
   };
@@ -187,6 +191,8 @@ function handleOnlineAction(socket, data) {
     if (room.board[nodeId] !== null || countStones(room, player) >= MAX_STONES) return;
 
     room.board[nodeId] = player;
+    room.moveCount += 1;
+    room.rematchVotes.clear();
     checkGameAfterMove(room, player);
 
     if (!room.winner) {
@@ -231,6 +237,8 @@ function handleOnlineAction(socket, data) {
     room.board[selected] = null;
     room.board[nodeId] = player;
     room.selected[player] = null;
+    room.moveCount += 1;
+    room.rematchVotes.clear();
 
     checkGameAfterMove(room, player);
 
@@ -241,6 +249,39 @@ function handleOnlineAction(socket, data) {
     io.to(room.id).emit("stone-selected", { selectedNode: null, availableMoves: [] });
     emitRoomState(room);
   }
+}
+
+function resetRoomForRematch(room) {
+  room.board = Array(9).fill(null);
+  room.currentTurn = PLAYER_ONE;
+  room.phase = "placing";
+  room.selected = {};
+  room.winner = null;
+  room.winLine = [];
+  room.moveCount = 0;
+  room.rematchVotes.clear();
+}
+
+function handleRematchRequest(socket) {
+  const room = rooms.get(socket.data.roomId);
+  const player = socket.data.player;
+
+  if (!room || !player) return;
+
+  room.rematchVotes.add(player);
+
+  if (room.rematchVotes.size >= 2 && getPlayerCount(room) === 2) {
+    resetRoomForRematch(room);
+    io.to(room.id).emit("rematch-started", getPublicRoomState(room));
+    emitRoomState(room);
+    return;
+  }
+
+  io.to(room.id).emit("rematch-status", {
+    requestedBy: player,
+    votes: Array.from(room.rematchVotes),
+    needed: 2
+  });
 }
 
 io.on("connection", (socket) => {
@@ -276,6 +317,8 @@ io.on("connection", (socket) => {
   });
 
   socket.on("online-action", (data) => handleOnlineAction(socket, data || {}));
+
+  socket.on("request-rematch", () => handleRematchRequest(socket));
 
   socket.on("disconnect", () => {
     if (waitingSocketId === socket.id) waitingSocketId = null;

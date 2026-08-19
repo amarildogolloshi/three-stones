@@ -495,16 +495,29 @@ function applyOnlineState(state) {
   phase = state.phase;
   winner = state.winner;
   winLine = state.winLine || [];
-  totalMoves = board.filter(Boolean).length;
+  totalMoves = typeof state.moveCount === "number" ? state.moveCount : board.filter(Boolean).length;
 
   if (state.playerCount < 2) {
+    rematchBtn.classList.add("hidden");
     message.textContent = "Waiting for another player to join.";
-  } else if (winner) {
+    renderBoard();
+    return;
+  }
+
+  if (winner) {
     message.textContent = winner === myOnlinePlayer ? `${playerName} wins!` : "Opponent wins.";
     stopTimer();
     showFireworks();
     rematchBtn.classList.remove("hidden");
-  } else if (currentTurn === myOnlinePlayer) {
+    rematchBtn.disabled = false;
+    renderBoard();
+    return;
+  }
+
+  rematchBtn.classList.add("hidden");
+  rematchBtn.disabled = false;
+
+  if (currentTurn === myOnlinePlayer) {
     message.textContent = phase === "moving" ? "Your turn. Move one stone." : "Your turn. Place one stone.";
   } else {
     message.textContent = "Waiting for opponent move.";
@@ -575,8 +588,14 @@ document.getElementById("newGameBtn").addEventListener("click", () => {
 });
 
 rematchBtn.addEventListener("click", () => {
-  if (mode === "pc") resetLocalGame();
-  else message.textContent = "Online rematch will be added in Phase 2.";
+  if (mode === "pc") {
+    resetLocalGame();
+    return;
+  }
+
+  socket.emit("request-rematch");
+  message.textContent = "Rematch requested. Waiting for opponent...";
+  rematchBtn.disabled = true;
 });
 
 document.getElementById("exitGameBtn").addEventListener("click", () => {
@@ -629,6 +648,33 @@ socket.on("room-error", (text) => {
   friendStatus.textContent = text;
   message.textContent = text;
   playSound("error");
+});
+
+
+socket.on("rematch-status", ({ requestedBy, votes, needed }) => {
+  const hasMyVote = votes.includes(myOnlinePlayer);
+
+  if (hasMyVote) {
+    message.textContent = `Rematch requested. Waiting for opponent (${votes.length}/${needed}).`;
+    rematchBtn.disabled = true;
+  } else {
+    message.textContent = "Opponent wants a rematch. Click Rematch to accept.";
+    rematchBtn.classList.remove("hidden");
+    rematchBtn.disabled = false;
+  }
+});
+
+socket.on("rematch-started", (state) => {
+  selectedNode = null;
+  availableMoves = [];
+  winner = null;
+  winLine = [];
+  totalMoves = 0;
+  rematchBtn.disabled = false;
+  rematchBtn.classList.add("hidden");
+  startTimer();
+  message.textContent = "Rematch started.";
+  applyOnlineState(state);
 });
 
 socket.on("opponent-left", (text) => {

@@ -1,19 +1,16 @@
-# Three Stones v2 Phase 1
+# Three Stones v2.2 Online Rematch
 
-Phase 1 features added:
+This version adds Phase 2 online rematch support.
 
-- Player name screen
-- PC difficulty: Easy, Medium, Hard
-- Move counter
-- Match timer
-- Sound toggle
-- Place, move, and win sounds
-- Rematch button
-- Dark stones and centered symbols
-- Winning animation
-- Firework victory effect
-- Basic touch and pointer support
-- Existing online room and random opponent support kept
+## Included
+
+- Everything from v2.1 Phase 1
+- Online rematch button
+- Both players must request rematch
+- Room resets automatically when both players agree
+- Online move counter is synchronized from the server
+- Online timer restarts after rematch
+- Rematch status messages
 
 ## Run
 
