@@ -1,22 +1,30 @@
-# Three Stones v3.0 Leaderboard and Accounts
+# Three Stones v3.0.1 Menu Reorganization Regular Format
 
-This version adds the first account and leaderboard phase on top of v2.9.
+This version is the same v3.0.1 menu reorganization, but rebuilt with regular readable file formatting.
 
-## Added in v3.0
+## Added in v3.0.1
 
-- Local account system
-- Register screen
-- Login screen
-- Logout button
+- Cleaner home menu layout
+- Account panel at the top
+- Play section
+- Progress section
+- Learn section
+- Settings section
+- Mobile-friendly menu grid
+- No intentional changes to the core game rules
+
+## Included
+
+- Local accounts
 - Profile screen
-- Local leaderboard screen
-- Account-linked stats
-- Ranking points are synced to the active profile
-- Guest mode still works
-
-## Important
-
-This v3.0 version uses browser `localStorage` accounts. It is safe for testing and does not require a database. A future v3.1 or v4.0 can connect this to Supabase, Firebase, MongoDB, or PostgreSQL for real cloud accounts and global leaderboards.
+- Local leaderboard
+- Play vs PC
+- Play Online
+- Daily Puzzle
+- Tournament mode
+- Tutorial and Hint button
+- Themes and Accessibility settings
+- PWA manifest and service worker
 
 ## Run
 
@@ -25,7 +33,7 @@ npm install
 npm start
 ```
 
-Open:
+Then open:
 
 ```text
 http://localhost:3000

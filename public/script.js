@@ -1,11 +1,9 @@
 const socket = io();
-
-const PLAYER_ONE = "player1";
-const PLAYER_TWO = "player2";
-const MAX_STONES = 3;
+const P1 = "player1";
+const P2 = "player2";
+const MAX = 3;
 const $ = (id) => document.getElementById(id);
-
-const nodePositions = [
+const nodes = [
   { id: 0, x: 15, y: 15 },
   { id: 1, x: 50, y: 15 },
   { id: 2, x: 85, y: 15 },
@@ -14,10 +12,9 @@ const nodePositions = [
   { id: 5, x: 85, y: 50 },
   { id: 6, x: 15, y: 85 },
   { id: 7, x: 50, y: 85 },
-  { id: 8, x: 85, y: 85 }
+  { id: 8, x: 85, y: 85 },
 ];
-
-const winningLines = [
+const wins = [
   [0, 1, 2],
   [3, 4, 5],
   [6, 7, 8],
@@ -25,9 +22,8 @@ const winningLines = [
   [1, 4, 7],
   [2, 5, 8],
   [0, 4, 8],
-  [2, 4, 6]
+  [2, 4, 6],
 ];
-
 const neighbors = {
   0: [1, 3, 4],
   1: [0, 2, 4],
@@ -37,1358 +33,1242 @@ const neighbors = {
   5: [2, 4, 8],
   6: [3, 7, 4],
   7: [6, 8, 4],
-  8: [5, 7, 4]
+  8: [5, 7, 4],
 };
-
-const pieceSets = {
+const pieces = {
   dots: { one: "●", two: "●", empty: "+" },
   stars: { one: "★", two: "★", empty: "+" },
   gems: { one: "◆", two: "◆", empty: "+" },
   shields: { one: "⬟", two: "⬟", empty: "+" },
-  animals: { one: "🐺", two: "🦊", empty: "+" }
+  animals: { one: "🐺", two: "🦊", empty: "+" },
 };
-
-const puzzleBank = [
+const puzzles = [
   {
     title: "Win in 1",
-    instruction: "Place your blue stone on the center node to complete the diagonal.",
-    board: [PLAYER_ONE, null, PLAYER_TWO, null, null, PLAYER_TWO, null, null, PLAYER_ONE],
+    instruction:
+      "Place your blue stone on the center node to complete the diagonal.",
+    board: [P1, null, P2, null, null, P2, null, null, P1],
     phase: "placing",
-    solution: 4
+    solution: 4,
   },
   {
     title: "Win in 1",
-    instruction: "Place your blue stone on the middle-right node to complete the center row.",
-    board: [PLAYER_TWO, null, null, PLAYER_ONE, PLAYER_ONE, null, null, PLAYER_TWO, null],
+    instruction:
+      "Place your blue stone on the middle-right node to complete the center row.",
+    board: [P2, null, null, P1, P1, null, null, P2, null],
     phase: "placing",
-    solution: 5
+    solution: 5,
   },
   {
     title: "Move to Win",
-    instruction: "Move the selected blue stone from the center to the top-right node to complete the top row.",
-    board: [PLAYER_ONE, PLAYER_ONE, null, PLAYER_TWO, PLAYER_ONE, PLAYER_TWO, PLAYER_TWO, null, null],
+    instruction:
+      "Move the selected blue stone from the center to the top-right node to complete the top row.",
+    board: [P1, P1, null, P2, P1, P2, P2, null, null],
     phase: "moving",
     solutionFrom: 4,
-    solution: 2
+    solution: 2,
   },
   {
     title: "Win in 1",
-    instruction: "Place your blue stone on the bottom-middle node to complete the column.",
-    board: [PLAYER_TWO, PLAYER_ONE, null, null, PLAYER_ONE, PLAYER_TWO, null, null, null],
+    instruction:
+      "Place your blue stone on the bottom-middle node to complete the column.",
+    board: [P2, P1, null, null, P1, P2, null, null, null],
     phase: "placing",
-    solution: 7
-  }
+    solution: 7,
+  },
 ];
+let mode = "pc",
+  playerName = "Player",
+  difficulty = "medium",
+  soundOn = true,
+  onlinePlayer = null,
+  roomId = null;
+let board = Array(9).fill(null),
+  turn = P1,
+  phase = "placing",
+  gameWinner = null,
+  winLine = [],
+  selected = null,
+  available = [],
+  moves = 0;
+let elapsed = 0,
+  timer = null,
+  audio = null,
+  theme = "classic",
+  pieceSet = "dots",
+  activePuzzle = null,
+  puzzleIndex = 0,
+  tournament = null,
+  deferredInstall = null,
+  hintNode = null;
+const d = {};
+[
+  "boardNodes",
+  "message",
+  "turnBox",
+  "playerOneCount",
+  "playerTwoCount",
+  "playerOneLabel",
+  "playerTwoLabel",
+  "gameModeText",
+  "onlineInfo",
+  "onlineRoomBadge",
+  "connectionBadge",
+  "createdRoomBox",
+  "roomCodeDisplay",
+  "roomLinkInput",
+  "friendStatus",
+  "randomStatus",
+  "playerNameInput",
+  "difficultySelect",
+  "soundToggle",
+  "moveCounter",
+  "timerDisplay",
+  "difficultyDisplay",
+  "rematchBtn",
+  "fireworks",
+  "rankTitle",
+  "rankPoints",
+  "statGames",
+  "statWins",
+  "statWinRate",
+  "detailRankTitle",
+  "detailRankPoints",
+  "detailGames",
+  "detailWins",
+  "detailLosses",
+  "detailWinRate",
+  "detailBestTime",
+  "detailFewestMoves",
+  "matchHistoryList",
+  "themeSelect",
+  "pieceSelect",
+  "dailyPuzzleSubtitle",
+  "challengeBadge",
+  "puzzleInstruction",
+  "puzzleStatus",
+  "tournamentSizeSelect",
+  "tournamentNamesInput",
+  "tournamentBracket",
+  "tournamentRoundTitle",
+  "bracketList",
+  "tournamentStatus",
+  "playTournamentMatchBtn",
+  "coachPanel",
+  "coachSummary",
+  "coachList",
+  "installBtn",
+  "accountBadge",
+  "loginBtn",
+  "registerBtn",
+  "profileBtn",
+  "leaderboardBtn",
+  "logoutBtn",
+  "registerUsernameInput",
+  "registerPasswordInput",
+  "avatarSelect",
+  "createAccountBtn",
+  "registerStatus",
+  "loginUsernameInput",
+  "loginPasswordInput",
+  "loginAccountBtn",
+  "loginStatus",
+  "profileAvatar",
+  "profileUsername",
+  "profileRank",
+  "profileGames",
+  "profileWins",
+  "profileLosses",
+  "profileWinRate",
+  "profileBestTime",
+  "profileFewestMoves",
+  "leaderboardList",
+  "accessibilityBtn",
+  "largeNodesToggle",
+  "highContrastToggle",
+  "nodeNumbersToggle",
+  "saveAccessibilityBtn",
+  "resetAccessibilityBtn",
+  "tutorialBtn",
+  "startTutorialBtn",
+  "hintBtn",
+].forEach((id) => (d[id] = $(id)));
+let currentAccountId =
+  localStorage.getItem("threeStonesCurrentAccountV301") || null;
 
-const dom = {
-  screens: document.querySelectorAll(".screen"),
-  boardNodes: $("boardNodes"),
-  message: $("message"),
-  turnBox: $("turnBox"),
-  playerOneCount: $("playerOneCount"),
-  playerTwoCount: $("playerTwoCount"),
-  playerOneLabel: $("playerOneLabel"),
-  playerTwoLabel: $("playerTwoLabel"),
-  gameModeText: $("gameModeText"),
-  onlineInfo: $("onlineInfo"),
-  onlineRoomBadge: $("onlineRoomBadge"),
-  connectionBadge: $("connectionBadge"),
-  createdRoomBox: $("createdRoomBox"),
-  roomCodeDisplay: $("roomCodeDisplay"),
-  roomLinkInput: $("roomLinkInput"),
-  friendStatus: $("friendStatus"),
-  randomStatus: $("randomStatus"),
-  playerNameInput: $("playerNameInput"),
-  difficultySelect: $("difficultySelect"),
-  soundToggle: $("soundToggle"),
-  moveCounter: $("moveCounter"),
-  timerDisplay: $("timerDisplay"),
-  difficultyDisplay: $("difficultyDisplay"),
-  rematchBtn: $("rematchBtn"),
-  fireworks: $("fireworks"),
-  rankTitle: $("rankTitle"),
-  rankPoints: $("rankPoints"),
-  statGames: $("statGames"),
-  statWins: $("statWins"),
-  statWinRate: $("statWinRate"),
-  detailRankTitle: $("detailRankTitle"),
-  detailRankPoints: $("detailRankPoints"),
-  detailGames: $("detailGames"),
-  detailWins: $("detailWins"),
-  detailLosses: $("detailLosses"),
-  detailWinRate: $("detailWinRate"),
-  detailBestTime: $("detailBestTime"),
-  detailFewestMoves: $("detailFewestMoves"),
-  matchHistoryList: $("matchHistoryList"),
-  themeSelect: $("themeSelect"),
-  pieceSelect: $("pieceSelect"),
-  dailyPuzzleSubtitle: $("dailyPuzzleSubtitle"),
-  challengeBadge: $("challengeBadge"),
-  puzzleInstruction: $("puzzleInstruction"),
-  puzzleStatus: $("puzzleStatus"),
-  tournamentSizeSelect: $("tournamentSizeSelect"),
-  tournamentNamesInput: $("tournamentNamesInput"),
-  tournamentBracket: $("tournamentBracket"),
-  tournamentRoundTitle: $("tournamentRoundTitle"),
-  bracketList: $("bracketList"),
-  tournamentStatus: $("tournamentStatus"),
-  playTournamentMatchBtn: $("playTournamentMatchBtn"),
-  coachPanel: $("coachPanel"),
-  coachSummary: $("coachSummary"),
-  coachList: $("coachList"),
-  installBtn: $("installBtn"),
-  accountBadge: $("accountBadge"),
-  loginBtn: $("loginBtn"),
-  registerBtn: $("registerBtn"),
-  profileBtn: $("profileBtn"),
-  leaderboardBtn: $("leaderboardBtn"),
-  logoutBtn: $("logoutBtn"),
-  registerUsernameInput: $("registerUsernameInput"),
-  registerPasswordInput: $("registerPasswordInput"),
-  avatarSelect: $("avatarSelect"),
-  createAccountBtn: $("createAccountBtn"),
-  registerStatus: $("registerStatus"),
-  loginUsernameInput: $("loginUsernameInput"),
-  loginPasswordInput: $("loginPasswordInput"),
-  loginAccountBtn: $("loginAccountBtn"),
-  loginStatus: $("loginStatus"),
-  profileAvatar: $("profileAvatar"),
-  profileUsername: $("profileUsername"),
-  profileRank: $("profileRank"),
-  profileGames: $("profileGames"),
-  profileWins: $("profileWins"),
-  profileLosses: $("profileLosses"),
-  profileWinRate: $("profileWinRate"),
-  profileBestTime: $("profileBestTime"),
-  profileFewestMoves: $("profileFewestMoves"),
-  leaderboardList: $("leaderboardList"),
-  accessibilityBtn: $("accessibilityBtn"),
-  tutorialBtn: $("tutorialBtn"),
-  startTutorialBtn: $("startTutorialBtn"),
-  hintBtn: $("hintBtn"),
-  largeNodesToggle: $("largeNodesToggle"),
-  highContrastToggle: $("highContrastToggle"),
-  reducedMotionToggle: $("reducedMotionToggle"),
-  nodeNumbersToggle: $("nodeNumbersToggle"),
-  saveAccessibilityBtn: $("saveAccessibilityBtn"),
-  resetAccessibilityBtn: $("resetAccessibilityBtn")
-};
-
-let mode = "pc";
-let playerName = "Player";
-let difficulty = "medium";
-let soundEnabled = true;
-let myOnlinePlayer = null;
-let currentRoomId = null;
-let board = Array(9).fill(null);
-let currentTurn = PLAYER_ONE;
-let phase = "placing";
-let winner = null;
-let winLine = [];
-let selectedNode = null;
-let availableMoves = [];
-let totalMoves = 0;
-let elapsedSeconds = 0;
-let timerId = null;
-let audioContext = null;
-let currentTheme = "classic";
-let currentPieces = "dots";
-let activePuzzle = null;
-let currentPuzzleIndex = 0;
-let tournament = null;
-let deferredInstallPrompt = null;
-let currentAccountId = localStorage.getItem("threeStonesCurrentAccountV30") || null;
-let tutorialActive = false;
-let hintNodeId = null;
-
-
-function loadAccessibilitySettings() {
-  return JSON.parse(localStorage.getItem("threeStonesAccessibilityV28") || "null") || {
-    largeNodes: false,
-    highContrast: false,
-    reducedMotion: false,
-    nodeNumbers: false
-  };
+function showScreen(id) {
+  document
+    .querySelectorAll(".screen")
+    .forEach((s) => s.classList.remove("active"));
+  $(id).classList.add("active");
 }
-
-function saveAccessibilitySettings() {
-  const settings = {
-    largeNodes: dom.largeNodesToggle.checked,
-    highContrast: dom.highContrastToggle.checked,
-    reducedMotion: dom.reducedMotionToggle.checked,
-    nodeNumbers: dom.nodeNumbersToggle.checked
-  };
-
-  localStorage.setItem("threeStonesAccessibilityV28", JSON.stringify(settings));
-  applyAccessibilitySettings(settings);
+function count(p) {
+  return board.filter((x) => x === p).length;
 }
-
-function applyAccessibilitySettings(settings) {
-  document.body.classList.toggle("large-nodes", settings.largeNodes);
-  document.body.classList.toggle("high-contrast", settings.highContrast);
-  document.body.classList.toggle("reduced-motion", settings.reducedMotion);
-  document.body.classList.toggle("show-node-numbers", settings.nodeNumbers);
-
-  dom.largeNodesToggle.checked = settings.largeNodes;
-  dom.highContrastToggle.checked = settings.highContrast;
-  dom.reducedMotionToggle.checked = settings.reducedMotion;
-  dom.nodeNumbersToggle.checked = settings.nodeNumbers;
+function isMovePhase() {
+  return count(P1) === MAX && count(P2) === MAX;
 }
-
-function resetAccessibilitySettings() {
-  const defaults = {
-    largeNodes: false,
-    highContrast: false,
-    reducedMotion: false,
-    nodeNumbers: false
-  };
-
-  localStorage.setItem("threeStonesAccessibilityV28", JSON.stringify(defaults));
-  applyAccessibilitySettings(defaults);
+function other(p) {
+  return p === P1 ? P2 : P1;
 }
-
-function showScreen(screenId) {
-  dom.screens.forEach((screen) => screen.classList.remove("active"));
-  $(screenId).classList.add("active");
+function findWin(p, b = board) {
+  return wins.find((line) => line.every((i) => b[i] === p)) || null;
 }
-
-function setModeClass(name) {
-  document.body.classList.remove("puzzle-active", "tournament-active", "tutorial-active");
-  if (name === "puzzle") document.body.classList.add("puzzle-active");
-  if (name === "tournament") document.body.classList.add("tournament-active");
-  if (name === "tutorial") document.body.classList.add("tutorial-active");
+function emptyNs(i, b = board) {
+  return neighbors[i].filter((n) => b[n] === null);
 }
-
-function countStones(player) {
-  return board.filter((owner) => owner === player).length;
+function movable(p, b = board) {
+  return b
+    .map((x, i) => (x === p ? i : null))
+    .filter((i) => i !== null && emptyNs(i, b).length);
 }
-
-function isMovementPhase() {
-  return countStones(PLAYER_ONE) === MAX_STONES && countStones(PLAYER_TWO) === MAX_STONES;
+function fmt(t) {
+  const m = String(Math.floor(t / 60)).padStart(2, "0");
+  const s = String(t % 60).padStart(2, "0");
+  return `${m}:${s}`;
 }
-
-function otherPlayer(player) {
-  return player === PLAYER_ONE ? PLAYER_TWO : PLAYER_ONE;
-}
-
-function findWinner(player, testBoard = board) {
-  return winningLines.find((line) => line.every((nodeId) => testBoard[nodeId] === player)) || null;
-}
-
-function getEmptyNeighbors(nodeId, testBoard = board) {
-  return neighbors[nodeId].filter((neighborId) => testBoard[neighborId] === null);
-}
-
-function getMovableStones(player, testBoard = board) {
-  return testBoard
-    .map((owner, index) => (owner === player ? index : null))
-    .filter((nodeId) => nodeId !== null && getEmptyNeighbors(nodeId, testBoard).length > 0);
-}
-
-function formatTime(totalSeconds) {
-  const minutes = String(Math.floor(totalSeconds / 60)).padStart(2, "0");
-  const seconds = String(totalSeconds % 60).padStart(2, "0");
-  return `${minutes}:${seconds}`;
-}
-
-function startTimer() {
-  stopTimer();
-  elapsedSeconds = 0;
-  updateTimerDisplay();
-  timerId = setInterval(() => {
-    elapsedSeconds += 1;
-    updateTimerDisplay();
+function startClock() {
+  stopClock();
+  elapsed = 0;
+  updateClock();
+  timer = setInterval(() => {
+    elapsed++;
+    updateClock();
   }, 1000);
 }
-
-function stopTimer() {
-  if (timerId) clearInterval(timerId);
-  timerId = null;
+function stopClock() {
+  if (timer) clearInterval(timer);
+  timer = null;
 }
-
-function updateTimerDisplay() {
-  dom.timerDisplay.textContent = formatTime(elapsedSeconds);
+function updateClock() {
+  d.timerDisplay.textContent = fmt(elapsed);
 }
-
-function playSound(type) {
-  if (!soundEnabled) return;
-  if (!audioContext) audioContext = new AudioContext();
-
-  const oscillator = audioContext.createOscillator();
-  const gain = audioContext.createGain();
-  const now = audioContext.currentTime;
-  const frequency = { place: 350, move: 520, win: 760, error: 180 }[type] || 350;
-
-  oscillator.frequency.setValueAtTime(frequency, now);
-  oscillator.type = type === "win" ? "triangle" : "sine";
-  gain.gain.setValueAtTime(0.12, now);
-  gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
-  oscillator.connect(gain);
-  gain.connect(audioContext.destination);
-  oscillator.start(now);
-  oscillator.stop(now + 0.2);
+function rankName(r) {
+  if (r >= 1800) return "Diamond";
+  if (r >= 1600) return "Platinum";
+  if (r >= 1400) return "Gold";
+  if (r >= 1200) return "Silver";
+  return "Bronze";
 }
-
-function showFireworks() {
-  dom.fireworks.classList.remove("hidden");
-  dom.fireworks.innerHTML = "";
-
-  for (let i = 0; i < 18; i += 1) {
-    const dot = document.createElement("span");
-    dot.className = "firework";
-    dot.style.left = `${10 + Math.random() * 80}%`;
-    dot.style.top = `${10 + Math.random() * 70}%`;
-    dot.style.background = ["#facc15", "#22c55e", "#38bdf8", "#fb7185"][i % 4];
-    dom.fireworks.appendChild(dot);
+function symbol(owner) {
+  const set = pieces[pieceSet] || pieces.dots;
+  return owner === P1 ? set.one : owner === P2 ? set.two : set.empty;
+}
+function ping(type) {
+  if (!soundOn) return;
+  if (!audio) audio = new AudioContext();
+  const o = audio.createOscillator(),
+    g = audio.createGain(),
+    now = audio.currentTime;
+  o.frequency.setValueAtTime(
+    { place: 350, move: 520, win: 760, error: 180 }[type] || 350,
+    now,
+  );
+  g.gain.setValueAtTime(0.1, now);
+  g.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+  o.connect(g);
+  g.connect(audio.destination);
+  o.start(now);
+  o.stop(now + 0.2);
+}
+function fire() {
+  d.fireworks.classList.remove("hidden");
+  d.fireworks.innerHTML = "";
+  for (let i = 0; i < 16; i++) {
+    const x = document.createElement("span");
+    x.className = "firework";
+    x.style.left = `${10 + Math.random() * 80}%`;
+    x.style.top = `${10 + Math.random() * 70}%`;
+    x.style.background = ["#facc15", "#22c55e", "#38bdf8", "#fb7185"][i % 4];
+    d.fireworks.appendChild(x);
   }
-
   setTimeout(() => {
-    dom.fireworks.classList.add("hidden");
-    dom.fireworks.innerHTML = "";
-  }, 1200);
+    d.fireworks.classList.add("hidden");
+    d.fireworks.innerHTML = "";
+  }, 1000);
 }
-
 function hideCoach() {
-  dom.coachPanel.classList.add("hidden");
-  dom.coachList.innerHTML = "";
+  d.coachPanel.classList.add("hidden");
+  d.coachList.innerHTML = "";
 }
-
-function showCoach(winningPlayer) {
+function coach(winner) {
   const notes = [];
-
-  if (mode === "puzzle") {
-    notes.push("Puzzle tip: find the line with two stones, then complete the third spot.");
-  } else if (mode === "tournament") {
-    notes.push("Tournament tip: block immediate threats before attacking.");
-  } else if (mode === "online" || mode === "random") {
+  if (mode === "puzzle")
+    notes.push(
+      "Puzzle tip: find two stones in a line, then complete the third spot.",
+    );
+  else if (mode === "online" || mode === "random")
     notes.push("Online tip: watch for two-in-a-row threats and block early.");
-  } else {
-    notes.push("PC tip: center control gives the most movement options.");
-  }
-
-  if (winLine.length > 0) {
-    notes.push(`Winning line: nodes ${winLine.map((nodeId) => nodeId + 1).join("-")}.`);
-  }
-
-  notes.push(totalMoves <= 6 ? "This was a quick game. Opening placement mattered most." : "In longer games, keep one stone near the center.");
-
-  dom.coachSummary.textContent = winningPlayer === PLAYER_ONE || winningPlayer === myOnlinePlayer
-    ? "Coach review: you won."
-    : "Coach review: review the final threat and block earlier.";
-  dom.coachList.innerHTML = "";
-
-  notes.forEach((note) => {
+  else
+    notes.push(
+      "PC tip: controlling the center gives the most movement options.",
+    );
+  if (winLine.length)
+    notes.push(`Winning line: nodes ${winLine.map((i) => i + 1).join("-")}.`);
+  notes.push(
+    moves <= 6
+      ? "This was a quick game. Opening placement mattered most."
+      : "In longer games, keep one stone near the center.",
+  );
+  d.coachSummary.textContent =
+    winner === P1 || winner === onlinePlayer
+      ? "Coach review: you won."
+      : "Coach review: review the final threat and block earlier.";
+  d.coachList.innerHTML = "";
+  notes.forEach((n) => {
     const li = document.createElement("li");
-    li.textContent = note;
-    dom.coachList.appendChild(li);
+    li.textContent = n;
+    d.coachList.appendChild(li);
   });
-
-  dom.coachPanel.classList.remove("hidden");
+  d.coachPanel.classList.remove("hidden");
 }
 
-
-function loadAccounts() {
-  return JSON.parse(localStorage.getItem("threeStonesAccountsV30") || "[]");
+function accounts() {
+  return JSON.parse(localStorage.getItem("threeStonesAccountsV301") || "[]");
 }
-
-function saveAccounts(accounts) {
-  localStorage.setItem("threeStonesAccountsV30", JSON.stringify(accounts));
+function saveAccounts(a) {
+  localStorage.setItem("threeStonesAccountsV301", JSON.stringify(a));
 }
-
-function getCurrentAccount() {
-  return loadAccounts().find((account) => account.id === currentAccountId) || null;
+function currentAccount() {
+  return accounts().find((a) => a.id === currentAccountId) || null;
 }
-
+function defaultStats() {
+  return {
+    rating: 1000,
+    games: 0,
+    wins: 0,
+    losses: 0,
+    bestTime: null,
+    fewestMoves: null,
+    history: [],
+  };
+}
+function loadStats() {
+  return (
+    JSON.parse(localStorage.getItem("threeStonesStatsV301") || "null") ||
+    defaultStats()
+  );
+}
+function saveStats(s) {
+  localStorage.setItem("threeStonesStatsV301", JSON.stringify(s));
+}
+function syncAccount() {
+  const acc = currentAccount();
+  if (!acc) return;
+  const s = loadStats(),
+    a = accounts(),
+    i = a.findIndex((x) => x.id === acc.id);
+  if (i < 0) return;
+  a[i] = { ...a[i], ...s };
+  saveAccounts(a);
+  updateAccountUI();
+}
+function loadAccountStats(acc) {
+  saveStats({
+    rating: acc.rating || 1000,
+    games: acc.games || 0,
+    wins: acc.wins || 0,
+    losses: acc.losses || 0,
+    bestTime: acc.bestTime ?? null,
+    fewestMoves: acc.fewestMoves ?? null,
+    history: acc.history || [],
+  });
+  updateStatsUI();
+}
 function createAccount() {
-  const username = dom.registerUsernameInput.value.trim();
-  const password = dom.registerPasswordInput.value.trim();
-  const avatar = dom.avatarSelect.value;
-
+  const username = d.registerUsernameInput.value.trim(),
+    password = d.registerPasswordInput.value.trim(),
+    avatar = d.avatarSelect.value;
   if (!username || !password) {
-    dom.registerStatus.textContent = "Enter a username and password.";
+    d.registerStatus.textContent = "Enter a username and password.";
     return;
   }
-
-  const accounts = loadAccounts();
-  if (accounts.some((account) => account.username.toLowerCase() === username.toLowerCase())) {
-    dom.registerStatus.textContent = "That username already exists.";
+  const a = accounts();
+  if (a.some((x) => x.username.toLowerCase() === username.toLowerCase())) {
+    d.registerStatus.textContent = "That username already exists.";
     return;
   }
-
-  const account = {
+  const acc = {
     id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()),
     username,
     password,
     avatar,
-    createdAt: new Date().toISOString(),
-    rating: 1000,
-    games: 0,
-    wins: 0,
-    losses: 0,
-    bestTime: null,
-    fewestMoves: null,
-    history: []
+    ...defaultStats(),
   };
-
-  accounts.push(account);
-  saveAccounts(accounts);
-  currentAccountId = account.id;
-  localStorage.setItem("threeStonesCurrentAccountV30", currentAccountId);
+  a.push(acc);
+  saveAccounts(a);
+  currentAccountId = acc.id;
+  localStorage.setItem("threeStonesCurrentAccountV301", currentAccountId);
   playerName = username;
-  dom.playerNameInput.value = username;
-  dom.registerStatus.textContent = "Account created.";
+  d.playerNameInput.value = username;
+  loadAccountStats(acc);
   updateAccountUI();
   showScreen("homeScreen");
 }
-
 function loginAccount() {
-  const username = dom.loginUsernameInput.value.trim();
-  const password = dom.loginPasswordInput.value.trim();
-  const account = loadAccounts().find((item) => item.username.toLowerCase() === username.toLowerCase() && item.password === password);
-
-  if (!account) {
-    dom.loginStatus.textContent = "Username or password is not correct.";
+  const u = d.loginUsernameInput.value.trim(),
+    p = d.loginPasswordInput.value.trim();
+  const acc = accounts().find(
+    (x) => x.username.toLowerCase() === u.toLowerCase() && x.password === p,
+  );
+  if (!acc) {
+    d.loginStatus.textContent = "Username or password is not correct.";
     return;
   }
-
-  currentAccountId = account.id;
-  localStorage.setItem("threeStonesCurrentAccountV30", currentAccountId);
-  playerName = account.username;
-  dom.playerNameInput.value = account.username;
-  dom.loginStatus.textContent = "Logged in.";
+  currentAccountId = acc.id;
+  localStorage.setItem("threeStonesCurrentAccountV301", currentAccountId);
+  playerName = acc.username;
+  d.playerNameInput.value = acc.username;
+  loadAccountStats(acc);
   updateAccountUI();
   showScreen("homeScreen");
 }
-
 function logoutAccount() {
   currentAccountId = null;
-  localStorage.removeItem("threeStonesCurrentAccountV30");
-  playerName = dom.playerNameInput.value.trim() || "Player";
+  localStorage.removeItem("threeStonesCurrentAccountV301");
   updateAccountUI();
 }
-
-function syncCurrentAccountFromStats() {
-  const account = getCurrentAccount();
-  if (!account) return;
-
-  const stats = loadStats();
-  const accounts = loadAccounts();
-  const index = accounts.findIndex((item) => item.id === account.id);
-  if (index < 0) return;
-
-  accounts[index] = {
-    ...accounts[index],
-    rating: stats.rating,
-    games: stats.games,
-    wins: stats.wins,
-    losses: stats.losses,
-    bestTime: stats.bestTime,
-    fewestMoves: stats.fewestMoves,
-    history: stats.history.slice(0, 20)
-  };
-
-  saveAccounts(accounts);
-  updateAccountUI();
-}
-
-function loadStatsForAccount(account) {
-  if (!account) return;
-
-  saveStats({
-    rating: account.rating || 1000,
-    games: account.games || 0,
-    wins: account.wins || 0,
-    losses: account.losses || 0,
-    bestTime: account.bestTime ?? null,
-    fewestMoves: account.fewestMoves ?? null,
-    history: account.history || []
-  });
-  updateStatsUI();
-}
-
 function updateAccountUI() {
-  const account = getCurrentAccount();
-
-  if (!account) {
-    dom.accountBadge.textContent = "Playing as Guest";
-    dom.loginBtn.classList.remove("hidden");
-    dom.registerBtn.classList.remove("hidden");
-    dom.profileBtn.classList.add("hidden");
-    dom.logoutBtn.classList.add("hidden");
+  const acc = currentAccount();
+  if (!acc) {
+    d.accountBadge.textContent = "Playing as Guest";
+    d.loginBtn.classList.remove("hidden");
+    d.registerBtn.classList.remove("hidden");
+    d.profileBtn.classList.add("hidden");
+    d.logoutBtn.classList.add("hidden");
     return;
   }
-
-  dom.accountBadge.textContent = `${account.avatar} ${account.username} • ${getRankName(account.rating || 1000)} • ${account.rating || 1000} RP`;
-  dom.loginBtn.classList.add("hidden");
-  dom.registerBtn.classList.add("hidden");
-  dom.profileBtn.classList.remove("hidden");
-  dom.logoutBtn.classList.remove("hidden");
+  d.accountBadge.textContent = `${acc.avatar} ${acc.username} • ${rankName(acc.rating || 1000)} • ${acc.rating || 1000} RP`;
+  d.loginBtn.classList.add("hidden");
+  d.registerBtn.classList.add("hidden");
+  d.profileBtn.classList.remove("hidden");
+  d.logoutBtn.classList.remove("hidden");
 }
-
-function updateProfileScreen() {
-  const account = getCurrentAccount();
-  if (!account) return;
-
-  const winRate = account.games ? Math.round((account.wins / account.games) * 100) : 0;
-  dom.profileAvatar.textContent = account.avatar;
-  dom.profileUsername.textContent = account.username;
-  dom.profileRank.textContent = `${getRankName(account.rating || 1000)} • ${account.rating || 1000} RP`;
-  dom.profileGames.textContent = account.games || 0;
-  dom.profileWins.textContent = account.wins || 0;
-  dom.profileLosses.textContent = account.losses || 0;
-  dom.profileWinRate.textContent = `${winRate}%`;
-  dom.profileBestTime.textContent = account.bestTime === null || account.bestTime === undefined ? "--:--" : formatTime(account.bestTime);
-  dom.profileFewestMoves.textContent = account.fewestMoves === null || account.fewestMoves === undefined ? "--" : account.fewestMoves;
+function profile() {
+  const a = currentAccount();
+  if (!a) return;
+  const wr = a.games ? Math.round((a.wins / a.games) * 100) : 0;
+  d.profileAvatar.textContent = a.avatar;
+  d.profileUsername.textContent = a.username;
+  d.profileRank.textContent = `${rankName(a.rating || 1000)} • ${a.rating || 1000} RP`;
+  d.profileGames.textContent = a.games || 0;
+  d.profileWins.textContent = a.wins || 0;
+  d.profileLosses.textContent = a.losses || 0;
+  d.profileWinRate.textContent = `${wr}%`;
+  d.profileBestTime.textContent =
+    a.bestTime == null ? "--:--" : fmt(a.bestTime);
+  d.profileFewestMoves.textContent =
+    a.fewestMoves == null ? "--" : a.fewestMoves;
+  showScreen("profileScreen");
 }
-
-function updateLeaderboardScreen() {
-  const accounts = loadAccounts().sort((a, b) => (b.rating || 1000) - (a.rating || 1000));
-  dom.leaderboardList.innerHTML = "";
-
-  if (accounts.length === 0) {
-    dom.leaderboardList.innerHTML = '<p class="history-meta">No accounts yet. Register an account to join the leaderboard.</p>';
+function leaderboard() {
+  const a = accounts().sort((x, y) => (y.rating || 1000) - (x.rating || 1000));
+  d.leaderboardList.innerHTML = "";
+  if (!a.length) {
+    d.leaderboardList.innerHTML =
+      '<p class="history-meta">No accounts yet. Register to join the leaderboard.</p>';
+    showScreen("leaderboardScreen");
     return;
   }
-
-  accounts.forEach((account, index) => {
+  a.forEach((x, i) => {
+    const wr = x.games ? Math.round((x.wins / x.games) * 100) : 0;
     const row = document.createElement("div");
-    const winRate = account.games ? Math.round((account.wins / account.games) * 100) : 0;
     row.className = "leaderboard-row";
-    row.innerHTML = `
-      <div class="leaderboard-rank">${index + 1}</div>
-      <div>
-        <div class="leaderboard-name">${account.avatar} ${account.username}</div>
-        <div class="leaderboard-meta">${getRankName(account.rating || 1000)} • ${account.wins || 0} wins • ${winRate}% win rate</div>
-      </div>
-      <div class="leaderboard-rating">${account.rating || 1000} RP</div>
-    `;
-    dom.leaderboardList.appendChild(row);
+    row.innerHTML = `<div class="leaderboard-rank">${i + 1}</div><div><div class="leaderboard-name">${x.avatar} ${x.username}</div><div class="leaderboard-meta">${rankName(x.rating || 1000)} • ${x.wins || 0} wins • ${wr}% win rate</div></div><div class="leaderboard-rating">${x.rating || 1000} RP</div>`;
+    d.leaderboardList.appendChild(row);
   });
+  showScreen("leaderboardScreen");
 }
-
-function loadStats() {
-  return JSON.parse(localStorage.getItem("threeStonesStatsV27") || "null") || {
-    rating: 1000,
-    games: 0,
-    wins: 0,
-    losses: 0,
-    bestTime: null,
-    fewestMoves: null,
-    history: []
-  };
-}
-
-function saveStats(stats) {
-  localStorage.setItem("threeStonesStatsV27", JSON.stringify(stats));
-}
-
-function getRankName(rating) {
-  if (rating >= 1800) return "Diamond";
-  if (rating >= 1600) return "Platinum";
-  if (rating >= 1400) return "Gold";
-  if (rating >= 1200) return "Silver";
-  return "Bronze";
-}
-
-function recordMatch(result, gameMode, opponentName) {
-  const stats = loadStats();
-  const ratingChange = result === "win" ? (gameMode === "online" ? 26 : 18) : (gameMode === "online" ? -26 : -18);
-
-  stats.games += 1;
-  if (result === "win") stats.wins += 1;
-  if (result === "loss") stats.losses += 1;
-  stats.rating = Math.max(100, stats.rating + ratingChange);
-
+function record(result, kind, opp) {
+  const s = loadStats();
+  const change =
+    result === "win"
+      ? kind === "online"
+        ? 26
+        : 18
+      : kind === "online"
+        ? -26
+        : -18;
+  s.games++;
+  if (result === "win") s.wins++;
+  else s.losses++;
+  s.rating = Math.max(100, s.rating + change);
   if (result === "win") {
-    if (stats.bestTime === null || elapsedSeconds < stats.bestTime) stats.bestTime = elapsedSeconds;
-    if (stats.fewestMoves === null || totalMoves < stats.fewestMoves) stats.fewestMoves = totalMoves;
+    if (s.bestTime == null || elapsed < s.bestTime) s.bestTime = elapsed;
+    if (s.fewestMoves == null || moves < s.fewestMoves) s.fewestMoves = moves;
   }
-
-  stats.history.unshift({
+  s.history.unshift({
     result,
-    mode: gameMode,
-    opponent: opponentName,
-    moves: totalMoves,
-    seconds: elapsedSeconds,
-    ratingChange,
-    date: new Date().toLocaleString()
+    mode: kind,
+    opponent: opp,
+    moves,
+    seconds: elapsed,
+    ratingChange: change,
+    date: new Date().toLocaleString(),
   });
-  stats.history = stats.history.slice(0, 20);
-  saveStats(stats);
+  s.history = s.history.slice(0, 20);
+  saveStats(s);
   updateStatsUI();
-  syncCurrentAccountFromStats();
+  syncAccount();
 }
-
 function updateStatsUI() {
-  const stats = loadStats();
-  const rank = getRankName(stats.rating);
-  const winRate = stats.games ? Math.round((stats.wins / stats.games) * 100) : 0;
-
-  dom.rankTitle.textContent = rank;
-  dom.rankPoints.textContent = `${stats.rating} RP`;
-  dom.statGames.textContent = stats.games;
-  dom.statWins.textContent = stats.wins;
-  dom.statWinRate.textContent = `${winRate}%`;
-  dom.detailRankTitle.textContent = rank;
-  dom.detailRankPoints.textContent = stats.rating;
-  dom.detailGames.textContent = stats.games;
-  dom.detailWins.textContent = stats.wins;
-  dom.detailLosses.textContent = stats.losses;
-  dom.detailWinRate.textContent = `${winRate}%`;
-  dom.detailBestTime.textContent = stats.bestTime === null ? "--:--" : formatTime(stats.bestTime);
-  dom.detailFewestMoves.textContent = stats.fewestMoves === null ? "--" : stats.fewestMoves;
-  dom.matchHistoryList.innerHTML = "";
-
-  if (stats.history.length === 0) {
-    dom.matchHistoryList.innerHTML = '<p class="history-meta">No matches yet.</p>';
+  const s = loadStats(),
+    wr = s.games ? Math.round((s.wins / s.games) * 100) : 0;
+  d.rankTitle.textContent = rankName(s.rating);
+  d.rankPoints.textContent = `${s.rating} RP`;
+  d.statGames.textContent = s.games;
+  d.statWins.textContent = s.wins;
+  d.statWinRate.textContent = `${wr}%`;
+  d.detailRankTitle.textContent = rankName(s.rating);
+  d.detailRankPoints.textContent = s.rating;
+  d.detailGames.textContent = s.games;
+  d.detailWins.textContent = s.wins;
+  d.detailLosses.textContent = s.losses;
+  d.detailWinRate.textContent = `${wr}%`;
+  d.detailBestTime.textContent = s.bestTime == null ? "--:--" : fmt(s.bestTime);
+  d.detailFewestMoves.textContent =
+    s.fewestMoves == null ? "--" : s.fewestMoves;
+  d.matchHistoryList.innerHTML = "";
+  if (!s.history.length) {
+    d.matchHistoryList.innerHTML =
+      '<p class="history-meta">No matches yet.</p>';
     return;
   }
-
-  stats.history.forEach((match) => {
+  s.history.forEach((m) => {
     const item = document.createElement("div");
     item.className = "history-item";
-    const resultLabel = match.result === "win" ? "W" : "L";
-    const rp = match.ratingChange > 0 ? `+${match.ratingChange}` : match.ratingChange;
-    item.innerHTML = `<div class="history-result ${match.result}">${resultLabel}</div><div><strong>${match.mode} vs ${match.opponent}</strong><div class="history-meta">${match.date} • ${match.moves} moves • ${formatTime(match.seconds)}</div></div><div class="history-rp">${rp} RP</div>`;
-    dom.matchHistoryList.appendChild(item);
+    const label = m.result === "win" ? "W" : "L",
+      rp = m.ratingChange > 0 ? `+${m.ratingChange}` : m.ratingChange;
+    item.innerHTML = `<div class="history-result ${m.result}">${label}</div><div><strong>${m.mode} vs ${m.opponent}</strong><div class="history-meta">${m.date} • ${m.moves} moves • ${fmt(m.seconds)}</div></div><div class="history-rp">${rp} RP</div>`;
+    d.matchHistoryList.appendChild(item);
   });
 }
-
 function resetStats() {
-  localStorage.removeItem("threeStonesStatsV27");
+  saveStats(defaultStats());
   updateStatsUI();
+  syncAccount();
 }
 
-function applyCustomization(theme = currentTheme, pieces = currentPieces) {
-  document.body.classList.remove("theme-classic", "theme-dark", "theme-wood", "theme-neon", "theme-stone", "theme-space", "pieces-dots", "pieces-stars", "pieces-gems", "pieces-shields", "pieces-animals");
-  document.body.classList.add(`theme-${theme}`, `pieces-${pieces}`);
-  currentTheme = theme;
-  currentPieces = pieces;
-  dom.themeSelect.value = theme;
-  dom.pieceSelect.value = pieces;
-  renderBoard();
-}
-
-function loadCustomization() {
-  return JSON.parse(localStorage.getItem("threeStonesCustomizeV27") || "null") || { theme: "classic", pieces: "dots" };
-}
-
-function saveCustomization() {
-  localStorage.setItem("threeStonesCustomizeV27", JSON.stringify({ theme: currentTheme, pieces: currentPieces }));
-}
-
-function getPieceSymbol(owner) {
-  const set = pieceSets[currentPieces] || pieceSets.dots;
-  if (owner === PLAYER_ONE) return set.one;
-  if (owner === PLAYER_TWO) return set.two;
-  return set.empty;
-}
-
-function todayPuzzleIndex() {
-  const key = new Date().toISOString().slice(0, 10);
-  return [...key].reduce((sum, character) => sum + character.charCodeAt(0), 0) % puzzleBank.length;
-}
-
-function loadPuzzleProgress() {
-  return JSON.parse(localStorage.getItem("threeStonesPuzzleV27") || "{}");
-}
-
-function savePuzzleProgress(progress) {
-  localStorage.setItem("threeStonesPuzzleV27", JSON.stringify(progress));
-}
-
-function updatePuzzleScreen() {
-  const index = todayPuzzleIndex();
-  const puzzle = puzzleBank[index];
-  const dateKey = new Date().toISOString().slice(0, 10);
-  const progress = loadPuzzleProgress();
-  dom.dailyPuzzleSubtitle.textContent = `Today's puzzle: ${dateKey}`;
-  dom.challengeBadge.textContent = puzzle.title;
-  dom.puzzleInstruction.textContent = puzzle.instruction;
-  dom.puzzleStatus.textContent = progress[dateKey] ? "Completed today. You can still practice." : "Puzzle ready.";
-}
-
-function startPuzzle(index = todayPuzzleIndex(), isPractice = false) {
-  const puzzle = puzzleBank[index];
-  activePuzzle = { ...puzzle, index, isPractice };
-  mode = "puzzle";
-  board = [...puzzle.board];
-  currentTurn = PLAYER_ONE;
-  phase = puzzle.phase;
-  winner = null;
-  winLine = [];
-  selectedNode = puzzle.solutionFrom ?? null;
-  availableMoves = selectedNode === null ? [] : getEmptyNeighbors(selectedNode);
-  totalMoves = 0;
-  setModeClass("puzzle");
-  dom.gameModeText.textContent = isPractice ? "Practice Puzzle" : "Daily Puzzle";
-  dom.message.textContent = puzzle.instruction;
-  dom.rematchBtn.textContent = "Try Again";
-  dom.rematchBtn.classList.add("hidden");
-  dom.onlineInfo.classList.add("hidden");
-  hideCoach();
-  startTimer();
-  renderBoard();
-  showScreen("gameScreen");
-}
-
-function completePuzzle(success) {
-  stopTimer();
-  if (success) {
-    const dateKey = new Date().toISOString().slice(0, 10);
-    const progress = loadPuzzleProgress();
-    if (!activePuzzle.isPractice) {
-      progress[dateKey] = true;
-      savePuzzleProgress(progress);
-    }
-    dom.message.textContent = activePuzzle.isPractice ? "Practice puzzle solved!" : "Daily puzzle solved!";
-    showFireworks();
-    playSound("win");
-    showCoach(PLAYER_ONE);
-  } else {
-    dom.message.textContent = "Not the best move. Click Try Again to reset this puzzle.";
-    playSound("error");
-    showCoach(PLAYER_TWO);
-  }
-  dom.rematchBtn.textContent = "Try Again";
-  dom.rematchBtn.classList.remove("hidden");
-  updatePuzzleScreen();
-}
-
-
-function getWinningPlacement(player) {
-  const emptyNodes = board
-    .map((owner, nodeId) => owner === null ? nodeId : null)
-    .filter((nodeId) => nodeId !== null);
-
-  for (const nodeId of emptyNodes) {
-    const testBoard = [...board];
-    testBoard[nodeId] = player;
-    if (findWinner(player, testBoard)) return nodeId;
-  }
-
-  return null;
-}
-
-function getWinningMovement(player, sourceBoard = board) {
-  for (const from of getMovableStones(player, sourceBoard)) {
-    for (const to of getEmptyNeighbors(from, sourceBoard)) {
-      const testBoard = [...sourceBoard];
-      testBoard[from] = null;
-      testBoard[to] = player;
-      if (findWinner(player, testBoard)) return { from, to };
-    }
-  }
-
-  return null;
-}
-
-function getBestHint() {
-  if (mode === "online" || mode === "random") return null;
-
-  if (mode === "puzzle" && activePuzzle) {
-    return {
-      text: activePuzzle.phase === "moving"
-        ? `Move to node ${activePuzzle.solution + 1}.`
-        : `Place on node ${activePuzzle.solution + 1}.`,
-      nodeId: activePuzzle.solution
-    };
-  }
-
-  if (!isMovementPhase()) {
-    const winningPlacement = getWinningPlacement(PLAYER_ONE);
-    if (winningPlacement !== null) return { text: `You can win by placing on node ${winningPlacement + 1}.`, nodeId: winningPlacement };
-
-    const blockPlacement = getWinningPlacement(PLAYER_TWO);
-    if (blockPlacement !== null) return { text: `Block PC by placing on node ${blockPlacement + 1}.`, nodeId: blockPlacement };
-
-    if (board[4] === null) return { text: "Good move: take the center node 5.", nodeId: 4 };
-
-    const emptyNode = board.findIndex((owner) => owner === null);
-    return emptyNode >= 0 ? { text: `Safe move: place on node ${emptyNode + 1}.`, nodeId: emptyNode } : null;
-  }
-
-  const winningMove = getWinningMovement(PLAYER_ONE);
-  if (winningMove) return { text: `Winning move: move from node ${winningMove.from + 1} to node ${winningMove.to + 1}.`, nodeId: winningMove.to };
-
-  const blockMove = getWinningMovement(PLAYER_TWO);
-  if (blockMove) return { text: `Block PC by moving to node ${blockMove.to + 1}.`, nodeId: blockMove.to };
-
-  return { text: "Try moving a stone toward the center or keep blocking PC threats.", nodeId: null };
-}
-
-function showHint() {
-  const hint = getBestHint();
-  if (!hint) {
-    dom.message.textContent = "No hint is available right now.";
-    return;
-  }
-
-  hintNodeId = hint.nodeId;
-  dom.message.textContent = `Hint: ${hint.text}`;
-  renderBoard();
-}
-
-function startTutorialGame() {
-  difficulty = "easy";
-  dom.difficultySelect.value = "easy";
-  resetLocalGame();
-  tutorialActive = true;
-  mode = "tutorial";
-  setModeClass("tutorial");
-  dom.gameModeText.textContent = "Tutorial Game";
-  dom.message.textContent = "Tutorial: try to take the center or block two-in-a-row threats.";
-  showScreen("gameScreen");
-}
-
-function renderBoard() {
-  dom.boardNodes.innerHTML = "";
-
-  nodePositions.forEach((node) => {
-    const button = document.createElement("button");
-    const owner = board[node.id];
-    button.className = "node";
-    button.style.left = `${node.x}%`;
-    button.style.top = `${node.y}%`;
-    button.textContent = getPieceSymbol(owner);
-
-    const nodeNumber = document.createElement("span");
-    nodeNumber.className = "node-number";
-    nodeNumber.textContent = node.id + 1;
-    button.appendChild(nodeNumber);
-
-    if (owner === PLAYER_ONE) button.classList.add("player-one");
-    if (owner === PLAYER_TWO) button.classList.add("player-two");
-    if (selectedNode === node.id) button.classList.add("selected");
-    if (availableMoves.includes(node.id)) button.classList.add("available");
-    if (winLine.includes(node.id)) button.classList.add("winning");
-    if (hintNodeId === node.id) button.classList.add("hint-highlight");
-
-    button.disabled = !canClickNode(node.id);
-    button.addEventListener("click", () => handleNodeClick(node.id));
-    button.addEventListener("pointerdown", () => handlePointerSelect(node.id));
-    button.addEventListener("pointerup", () => handlePointerRelease(node.id));
-    dom.boardNodes.appendChild(button);
+function render() {
+  d.boardNodes.innerHTML = "";
+  nodes.forEach((n) => {
+    const b = document.createElement("button"),
+      owner = board[n.id];
+    b.className = "node";
+    b.style.left = `${n.x}%`;
+    b.style.top = `${n.y}%`;
+    b.textContent = symbol(owner);
+    const num = document.createElement("span");
+    num.className = "node-number";
+    num.textContent = n.id + 1;
+    b.appendChild(num);
+    if (owner === P1) b.classList.add("player-one");
+    if (owner === P2) b.classList.add("player-two");
+    if (selected === n.id) b.classList.add("selected");
+    if (available.includes(n.id)) b.classList.add("available");
+    if (winLine.includes(n.id)) b.classList.add("winning");
+    if (hintNode === n.id) b.classList.add("hint-highlight");
+    b.disabled = !canClick(n.id);
+    b.addEventListener("click", () => clickNode(n.id));
+    d.boardNodes.appendChild(b);
   });
-
-  dom.playerOneCount.textContent = countStones(PLAYER_ONE);
-  dom.playerTwoCount.textContent = countStones(PLAYER_TWO);
-  dom.playerOneLabel.textContent = mode === "online" || mode === "random" ? (myOnlinePlayer === PLAYER_ONE ? playerName : "Friend") : playerName;
-  dom.playerTwoLabel.textContent = mode === "online" || mode === "random" ? (myOnlinePlayer === PLAYER_TWO ? playerName : "Friend") : "PC";
-  dom.moveCounter.textContent = totalMoves;
-  dom.difficultyDisplay.textContent = difficulty[0].toUpperCase() + difficulty.slice(1);
-
-  if (winner) dom.turnBox.textContent = "Game Over";
-  else if (mode === "online" || mode === "random") dom.turnBox.textContent = currentTurn === myOnlinePlayer ? "Your Turn" : "Opponent Turn";
-  else dom.turnBox.textContent = currentTurn === PLAYER_ONE ? "Your Turn" : "PC Turn";
+  d.playerOneCount.textContent = count(P1);
+  d.playerTwoCount.textContent = count(P2);
+  d.playerOneLabel.textContent =
+    mode === "online" || mode === "random"
+      ? onlinePlayer === P1
+        ? playerName
+        : "Friend"
+      : playerName;
+  d.playerTwoLabel.textContent =
+    mode === "online" || mode === "random"
+      ? onlinePlayer === P2
+        ? playerName
+        : "Friend"
+      : "PC";
+  d.moveCounter.textContent = moves;
+  d.difficultyDisplay.textContent =
+    difficulty[0].toUpperCase() + difficulty.slice(1);
+  d.turnBox.textContent = gameWinner
+    ? "Game Over"
+    : mode === "online" || mode === "random"
+      ? turn === onlinePlayer
+        ? "Your Turn"
+        : "Opponent Turn"
+      : turn === P1
+        ? "Your Turn"
+        : "PC Turn";
 }
-
-function canClickNode(nodeId) {
-  if (winner) return false;
-  if (mode === "online" || mode === "random") return currentTurn === myOnlinePlayer;
-  if (currentTurn !== PLAYER_ONE) return false;
-
+function canClick(i) {
+  if (gameWinner) return false;
+  if (mode === "online" || mode === "random") return turn === onlinePlayer;
+  if (turn !== P1) return false;
   if (mode === "puzzle") {
-    if (phase === "placing") return board[nodeId] === null;
-    if (selectedNode === null) return board[nodeId] === PLAYER_ONE && getEmptyNeighbors(nodeId).length > 0;
-    return nodeId === selectedNode || board[nodeId] === PLAYER_ONE || availableMoves.includes(nodeId);
+    if (phase === "placing") return board[i] === null;
+    if (selected === null) return board[i] === P1 && emptyNs(i).length;
+    return i === selected || board[i] === P1 || available.includes(i);
   }
-
-  if (!isMovementPhase()) return board[nodeId] === null && countStones(PLAYER_ONE) < MAX_STONES;
-  if (selectedNode === null) return board[nodeId] === PLAYER_ONE && getEmptyNeighbors(nodeId).length > 0;
-  return nodeId === selectedNode || board[nodeId] === PLAYER_ONE || availableMoves.includes(nodeId);
+  if (!isMovePhase()) return board[i] === null && count(P1) < MAX;
+  if (selected === null) return board[i] === P1 && emptyNs(i).length;
+  return i === selected || board[i] === P1 || available.includes(i);
 }
-
-function handlePointerSelect(nodeId) {
-  if ((mode === "pc" || mode === "tournament") && isMovementPhase() && board[nodeId] === PLAYER_ONE) {
-    selectedNode = nodeId;
-    availableMoves = getEmptyNeighbors(nodeId);
-    renderBoard();
-  }
-}
-
-function handlePointerRelease(nodeId) {
-  if ((mode === "pc" || mode === "tournament") && isMovementPhase() && selectedNode !== null && availableMoves.includes(nodeId)) {
-    moveLocalStone(nodeId);
-  }
-}
-
-function handleNodeClick(nodeId) {
-  hintNodeId = null;
+function clickNode(i) {
+  hintNode = null;
   if (mode === "online" || mode === "random") {
-    socket.emit("online-action", { nodeId });
+    socket.emit("online-action", { nodeId: i });
     return;
   }
-
   if (mode === "puzzle") {
-    phase === "moving" ? moveLocalStone(nodeId) : placeLocalStone(nodeId);
+    phase === "moving" ? moveStone(i) : placeStone(i);
     return;
   }
-
-  isMovementPhase() ? moveLocalStone(nodeId) : placeLocalStone(nodeId);
+  isMovePhase() ? moveStone(i) : placeStone(i);
 }
-
-function placeLocalStone(nodeId) {
-  if (board[nodeId] !== null) return;
-  board[nodeId] = PLAYER_ONE;
-  totalMoves += 1;
-  playSound("place");
-
+function placeStone(i) {
+  if (board[i] !== null) return;
+  board[i] = P1;
+  moves++;
+  ping("place");
   if (mode === "puzzle") {
-    completePuzzle(activePuzzle && nodeId === activePuzzle.solution && Boolean(findWinner(PLAYER_ONE)));
-    renderBoard();
+    completePuzzle(
+      activePuzzle && i === activePuzzle.solution && !!findWin(P1),
+    );
+    render();
     return;
   }
-
-  if (finishLocalTurn(PLAYER_ONE)) return;
-  currentTurn = PLAYER_TWO;
-  dom.message.textContent = "PC is thinking...";
-  renderBoard();
-  setTimeout(handlePcTurn, 450);
+  if (finishLocal(P1)) return;
+  turn = P2;
+  d.message.textContent = "PC is thinking...";
+  render();
+  setTimeout(pcTurn, 450);
 }
-
-function moveLocalStone(nodeId) {
-  if (selectedNode === null) {
-    if (board[nodeId] === PLAYER_ONE && getEmptyNeighbors(nodeId).length > 0) {
-      selectedNode = nodeId;
-      availableMoves = getEmptyNeighbors(nodeId);
-      dom.message.textContent = "Choose a green connected node.";
-      renderBoard();
+function moveStone(i) {
+  if (selected === null) {
+    if (board[i] === P1 && emptyNs(i).length) {
+      selected = i;
+      available = emptyNs(i);
+      d.message.textContent = "Choose a green connected node.";
+      render();
     }
     return;
   }
-
-  if (nodeId === selectedNode) {
-    selectedNode = null;
-    availableMoves = [];
-    renderBoard();
+  if (i === selected) {
+    selected = null;
+    available = [];
+    render();
     return;
   }
-
-  if (board[nodeId] === PLAYER_ONE && getEmptyNeighbors(nodeId).length > 0) {
-    selectedNode = nodeId;
-    availableMoves = getEmptyNeighbors(nodeId);
-    renderBoard();
+  if (board[i] === P1 && emptyNs(i).length) {
+    selected = i;
+    available = emptyNs(i);
+    render();
     return;
   }
-
-  if (availableMoves.includes(nodeId)) {
-    board[selectedNode] = null;
-    board[nodeId] = PLAYER_ONE;
-    selectedNode = null;
-    availableMoves = [];
-    totalMoves += 1;
-    playSound("move");
-
+  if (available.includes(i)) {
+    board[selected] = null;
+    board[i] = P1;
+    selected = null;
+    available = [];
+    moves++;
+    ping("move");
     if (mode === "puzzle") {
-      completePuzzle(activePuzzle && nodeId === activePuzzle.solution && Boolean(findWinner(PLAYER_ONE)));
-      renderBoard();
+      completePuzzle(
+        activePuzzle && i === activePuzzle.solution && !!findWin(P1),
+      );
+      render();
       return;
     }
-
-    if (finishLocalTurn(PLAYER_ONE)) return;
-    currentTurn = PLAYER_TWO;
-    dom.message.textContent = "PC is thinking...";
-    renderBoard();
-    setTimeout(handlePcTurn, 450);
+    if (finishLocal(P1)) return;
+    turn = P2;
+    d.message.textContent = "PC is thinking...";
+    render();
+    setTimeout(pcTurn, 450);
   }
 }
-
-function finishLocalTurn(player) {
-  const line = findWinner(player);
-
+function finishLocal(p) {
+  const line = findWin(p);
   if (line) {
-    winner = player;
+    gameWinner = p;
     winLine = line;
-    dom.message.textContent = player === PLAYER_ONE ? `${playerName} wins!` : "PC wins!";
-
-    if (mode === "pc") recordMatch(player === PLAYER_ONE ? "win" : "loss", "pc", "PC");
-    if (mode === "tournament") handleTournamentResult(player);
-
-    playSound("win");
-    stopTimer();
-    showFireworks();
-    showCoach(player);
-    dom.rematchBtn.classList.remove("hidden");
-    renderBoard();
+    d.message.textContent = p === P1 ? `${playerName} wins!` : "PC wins!";
+    if (mode === "pc" || mode === "tutorial")
+      record(p === P1 ? "win" : "loss", "pc", "PC");
+    ping("win");
+    stopClock();
+    fire();
+    coach(p);
+    d.rematchBtn.classList.remove("hidden");
+    render();
     return true;
   }
-
-  if (isMovementPhase()) {
-    phase = "moving";
-  }
-
+  if (isMovePhase()) phase = "moving";
   return false;
 }
-
-function handlePcTurn() {
-  if (winner) return;
-
-  if (isMovementPhase()) {
-    const move = choosePcMovement();
-    if (!move) return;
-    board[move.from] = null;
-    board[move.to] = PLAYER_TWO;
-    playSound("move");
-  } else {
-    const nodeId = choosePcPlacement();
-    board[nodeId] = PLAYER_TWO;
-    playSound("place");
+function winPlacement(p) {
+  for (const i of board
+    .map((x, i) => (x === null ? i : null))
+    .filter((x) => x !== null)) {
+    const b = [...board];
+    b[i] = p;
+    if (findWin(p, b)) return i;
   }
-
-  totalMoves += 1;
-  if (finishLocalTurn(PLAYER_TWO)) return;
-  currentTurn = PLAYER_ONE;
-  dom.message.textContent = isMovementPhase() ? "Move phase. Select one stone." : "Your turn.";
-  renderBoard();
+  return null;
 }
-
-function choosePcPlacement() {
-  const emptyNodes = board.map((owner, index) => owner === null ? index : null).filter((index) => index !== null);
-
+function winMovement(p, b = board) {
+  for (const from of movable(p, b))
+    for (const to of emptyNs(from, b)) {
+      const t = [...b];
+      t[from] = null;
+      t[to] = p;
+      if (findWin(p, t)) return { from, to };
+    }
+  return null;
+}
+function pcPlacement() {
+  const empty = board
+    .map((x, i) => (x === null ? i : null))
+    .filter((x) => x !== null);
   if (difficulty !== "easy") {
-    const win = getWinningPlacement(PLAYER_TWO);
-    if (win !== null) return win;
+    const w = winPlacement(P2);
+    if (w !== null) return w;
   }
-
   if (["medium", "hard", "expert"].includes(difficulty)) {
-    const block = getWinningPlacement(PLAYER_ONE);
+    const block = winPlacement(P1);
     if (block !== null) return block;
   }
-
   if (["hard", "expert"].includes(difficulty) && board[4] === null) return 4;
-
-  if (difficulty === "expert") {
-    const corners = [0, 2, 6, 8].filter((nodeId) => board[nodeId] === null);
-    if (corners.length > 0) return corners[Math.floor(Math.random() * corners.length)];
-  }
-
-  return emptyNodes[Math.floor(Math.random() * emptyNodes.length)];
+  const corners = [0, 2, 6, 8].filter((i) => board[i] === null);
+  if (difficulty === "expert" && corners.length)
+    return corners[Math.floor(Math.random() * corners.length)];
+  return empty[Math.floor(Math.random() * empty.length)];
 }
-
-function choosePcMovement() {
-  const possibleMoves = [];
-  for (const from of getMovableStones(PLAYER_TWO)) {
-    for (const to of getEmptyNeighbors(from)) {
-      possibleMoves.push({ from, to });
-    }
-  }
-
+function pcMovement() {
+  const movesList = [];
+  for (const from of movable(P2))
+    for (const to of emptyNs(from)) movesList.push({ from, to });
   if (difficulty !== "easy") {
-    const win = getWinningMovement(PLAYER_TWO);
-    if (win) return win;
+    const w = winMovement(P2);
+    if (w) return w;
   }
-
   if (["medium", "hard", "expert"].includes(difficulty)) {
-    const block = getWinningMovement(PLAYER_ONE);
-    if (block) {
-      const directBlock = possibleMoves.find((move) => move.to === block.to);
-      if (directBlock) return directBlock;
+    const b = winMovement(P1);
+    if (b) {
+      const m = movesList.find((x) => x.to === b.to);
+      if (m) return m;
     }
   }
-
   if (["hard", "expert"].includes(difficulty)) {
-    const centerMove = possibleMoves.find((move) => move.to === 4);
-    if (centerMove) return centerMove;
+    const c = movesList.find((x) => x.to === 4);
+    if (c) return c;
   }
-
-  if (difficulty === "expert") {
-    const safeMoves = possibleMoves.filter((move) => {
-      const testBoard = [...board];
-      testBoard[move.from] = null;
-      testBoard[move.to] = PLAYER_TWO;
-      return !getWinningMovement(PLAYER_ONE, testBoard);
-    });
-
-    if (safeMoves.length > 0) return safeMoves[Math.floor(Math.random() * safeMoves.length)];
-  }
-
-  return possibleMoves[Math.floor(Math.random() * possibleMoves.length)] || null;
+  return movesList[Math.floor(Math.random() * movesList.length)] || null;
 }
-
-function resetLocalBoardOnly() {
-  hintNodeId = null;
+function pcTurn() {
+  if (gameWinner) return;
+  if (isMovePhase()) {
+    const m = pcMovement();
+    if (!m) return;
+    board[m.from] = null;
+    board[m.to] = P2;
+    ping("move");
+  } else {
+    board[pcPlacement()] = P2;
+    ping("place");
+  }
+  moves++;
+  if (finishLocal(P2)) return;
+  turn = P1;
+  d.message.textContent = isMovePhase()
+    ? "Move phase. Select one stone."
+    : "Your turn.";
+  render();
+}
+function resetBoard() {
+  hintNode = null;
   board = Array(9).fill(null);
-  currentTurn = PLAYER_ONE;
+  turn = P1;
   phase = "placing";
-  winner = null;
+  gameWinner = null;
   winLine = [];
-  selectedNode = null;
-  availableMoves = [];
-  totalMoves = 0;
-  dom.onlineInfo.classList.add("hidden");
-  dom.rematchBtn.textContent = "Rematch";
-  dom.rematchBtn.classList.add("hidden");
-  dom.message.textContent = "Your turn.";
+  selected = null;
+  available = [];
+  moves = 0;
+  d.onlineInfo.classList.add("hidden");
+  d.rematchBtn.textContent = "Rematch";
+  d.rematchBtn.classList.add("hidden");
+  d.message.textContent = "Your turn.";
   hideCoach();
-  startTimer();
-  renderBoard();
+  startClock();
+  render();
 }
-
-function resetLocalGame() {
-  tutorialActive = false;
+function resetGame() {
   mode = "pc";
-  setModeClass("normal");
-  myOnlinePlayer = null;
-  currentRoomId = null;
-  dom.gameModeText.textContent = "Play vs PC";
-  resetLocalBoardOnly();
+  onlinePlayer = null;
+  roomId = null;
+  d.gameModeText.textContent = "Play vs PC";
+  resetBoard();
 }
-
-function applyOnlineState(state) {
-  board = state.board;
-  currentTurn = state.currentTurn;
-  phase = state.phase;
-  winner = state.winner;
-  winLine = state.winLine || [];
-  totalMoves = typeof state.moveCount === "number" ? state.moveCount : board.filter(Boolean).length;
-
-  if (state.playerCount < 2) {
-    dom.message.textContent = "Waiting for another player to join.";
-    renderBoard();
+function showHint() {
+  if (mode === "online" || mode === "random")
+    return (d.message.textContent = "Hints are available in local modes only.");
+  if (mode === "puzzle" && activePuzzle) {
+    hintNode = activePuzzle.solution;
+    d.message.textContent = `Hint: use node ${activePuzzle.solution + 1}.`;
+    render();
     return;
   }
-
-  if (winner) {
-    dom.message.textContent = winner === myOnlinePlayer ? `${playerName} wins!` : "Opponent wins.";
-    recordMatch(winner === myOnlinePlayer ? "win" : "loss", "online", "Friend");
-    stopTimer();
-    showFireworks();
-    showCoach(winner);
-    dom.rematchBtn.classList.remove("hidden");
-    renderBoard();
+  let i = winPlacement(P1);
+  if (i !== null) {
+    hintNode = i;
+    d.message.textContent = `Hint: you can win on node ${i + 1}.`;
+    render();
     return;
   }
-
-  dom.rematchBtn.classList.add("hidden");
-  dom.message.textContent = currentTurn === myOnlinePlayer
-    ? phase === "moving" ? "Your turn. Move one stone." : "Your turn. Place one stone."
-    : "Waiting for opponent move.";
-  renderBoard();
+  i = winPlacement(P2);
+  if (i !== null) {
+    hintNode = i;
+    d.message.textContent = `Hint: block PC on node ${i + 1}.`;
+    render();
+    return;
+  }
+  if (board[4] === null) {
+    hintNode = 4;
+    d.message.textContent = "Hint: take the center node 5.";
+    render();
+    return;
+  }
+  d.message.textContent =
+    "Hint: keep a stone near the center and watch for two-in-a-row threats.";
 }
-
-function getTournamentNames() {
-  const size = Number(dom.tournamentSizeSelect.value);
-  const names = dom.tournamentNamesInput.value.split("\n").map((name) => name.trim()).filter(Boolean);
+function puzzleToday() {
+  const key = new Date().toISOString().slice(0, 10);
+  return [...key].reduce((s, c) => s + c.charCodeAt(0), 0) % puzzles.length;
+}
+function updatePuzzle() {
+  const pz = puzzles[puzzleToday()];
+  d.dailyPuzzleSubtitle.textContent = `Today's puzzle: ${new Date().toISOString().slice(0, 10)}`;
+  d.challengeBadge.textContent = pz.title;
+  d.puzzleInstruction.textContent = pz.instruction;
+  d.puzzleStatus.textContent = "Puzzle ready.";
+}
+function startPuzzle(i = puzzleToday(), practice = false) {
+  activePuzzle = { ...puzzles[i], index: i, isPractice: practice };
+  mode = "puzzle";
+  board = [...activePuzzle.board];
+  turn = P1;
+  phase = activePuzzle.phase;
+  gameWinner = null;
+  winLine = [];
+  selected = activePuzzle.solutionFrom ?? null;
+  available = selected === null ? [] : emptyNs(selected);
+  moves = 0;
+  d.gameModeText.textContent = practice ? "Practice Puzzle" : "Daily Puzzle";
+  d.message.textContent = activePuzzle.instruction;
+  d.rematchBtn.textContent = "Try Again";
+  d.rematchBtn.classList.add("hidden");
+  hideCoach();
+  startClock();
+  render();
+  showScreen("gameScreen");
+}
+function completePuzzle(ok) {
+  stopClock();
+  if (ok) {
+    d.message.textContent = activePuzzle.isPractice
+      ? "Practice puzzle solved!"
+      : "Daily puzzle solved!";
+    fire();
+    ping("win");
+    coach(P1);
+  } else {
+    d.message.textContent =
+      "Not the best move. Click Try Again to reset this puzzle.";
+    ping("error");
+    coach(P2);
+  }
+  d.rematchBtn.textContent = "Try Again";
+  d.rematchBtn.classList.remove("hidden");
+}
+function applyState(s) {
+  board = s.board;
+  turn = s.currentTurn;
+  phase = s.phase;
+  gameWinner = s.winner;
+  winLine = s.winLine || [];
+  moves = s.moveCount || 0;
+  if (s.playerCount < 2) {
+    d.message.textContent = "Waiting for another player to join.";
+    render();
+    return;
+  }
+  if (gameWinner) {
+    d.message.textContent =
+      gameWinner === onlinePlayer ? `${playerName} wins!` : "Opponent wins.";
+    record(gameWinner === onlinePlayer ? "win" : "loss", "online", "Friend");
+    stopClock();
+    fire();
+    coach(gameWinner);
+    d.rematchBtn.classList.remove("hidden");
+    render();
+    return;
+  }
+  d.rematchBtn.classList.add("hidden");
+  d.message.textContent =
+    turn === onlinePlayer
+      ? phase === "moving"
+        ? "Your turn. Move one stone."
+        : "Your turn. Place one stone."
+      : "Waiting for opponent move.";
+  render();
+}
+function tournamentNames() {
+  const size = Number(d.tournamentSizeSelect.value);
+  const names = d.tournamentNamesInput.value
+    .split("\n")
+    .map((x) => x.trim())
+    .filter(Boolean);
   while (names.length < size) names.push(`Player ${names.length + 1}`);
   return names.slice(0, size);
 }
-
 function startTournament() {
-  const players = getTournamentNames();
-  tournament = { round: 1, players, matches: [], currentMatchIndex: 0, champion: null };
-  buildTournamentRound();
-  dom.tournamentBracket.classList.remove("hidden");
-  renderTournamentBracket();
+  const players = tournamentNames();
+  tournament = { round: 1, players, matches: [], current: 0, champion: null };
+  buildRound();
+  d.tournamentBracket.classList.remove("hidden");
+  renderTournament();
 }
-
-function buildTournamentRound() {
+function buildRound() {
   tournament.matches = [];
-  tournament.currentMatchIndex = 0;
-  for (let i = 0; i < tournament.players.length; i += 2) {
-    tournament.matches.push({ player: tournament.players[i], opponent: tournament.players[i + 1] || "BYE", winner: null });
-  }
+  tournament.current = 0;
+  for (let i = 0; i < tournament.players.length; i += 2)
+    tournament.matches.push({
+      player: tournament.players[i],
+      opponent: tournament.players[i + 1] || "BYE",
+      winner: null,
+    });
 }
-
-function renderTournamentBracket() {
-  dom.tournamentRoundTitle.textContent = tournament.champion ? "Champion" : `Round ${tournament.round}`;
-  dom.bracketList.innerHTML = "";
-
+function renderTournament() {
+  d.tournamentRoundTitle.textContent = tournament.champion
+    ? "Champion"
+    : `Round ${tournament.round}`;
+  d.bracketList.innerHTML = "";
   if (tournament.champion) {
-    dom.tournamentStatus.textContent = `${tournament.champion} is the tournament champion!`;
-    dom.playTournamentMatchBtn.disabled = true;
+    d.tournamentStatus.textContent = `${tournament.champion} is champion!`;
     return;
   }
-
-  tournament.matches.forEach((match) => {
+  tournament.matches.forEach((m) => {
     const row = document.createElement("div");
     row.className = "bracket-match";
-    if (match.winner) row.classList.add("bracket-winner");
-    row.innerHTML = `<span>${match.player}</span><span class="bracket-vs">vs</span><span>${match.opponent}${match.winner ? ` → Winner: ${match.winner}` : ""}</span>`;
-    dom.bracketList.appendChild(row);
+    row.innerHTML = `<span>${m.player}</span><span class="bracket-vs">vs</span><span>${m.opponent}${m.winner ? ` → Winner: ${m.winner}` : ""}</span>`;
+    d.bracketList.appendChild(row);
   });
-
-  const next = tournament.matches[tournament.currentMatchIndex];
-  dom.tournamentStatus.textContent = next ? `Next match: ${next.player} vs ${next.opponent}` : "Round complete.";
-  dom.playTournamentMatchBtn.disabled = false;
+  const next = tournament.matches[tournament.current];
+  d.tournamentStatus.textContent = next
+    ? `Next match: ${next.player} vs ${next.opponent}`
+    : "Round complete.";
 }
-
-function playNextTournamentMatch() {
-  if (!tournament || tournament.champion) return;
-  const match = tournament.matches[tournament.currentMatchIndex];
-  if (!match) return finishTournamentRound();
-
-  if (match.opponent === "BYE") {
-    match.winner = match.player;
-    tournament.currentMatchIndex += 1;
-    renderTournamentBracket();
+function playTournament() {
+  const m = tournament.matches[tournament.current];
+  if (!m) return finishRound();
+  if (m.opponent === "BYE") {
+    m.winner = m.player;
+    tournament.current++;
+    renderTournament();
     return;
   }
-
-  mode = "tournament";
-  setModeClass("tournament");
-  playerName = match.player;
-  resetLocalBoardOnly();
-  dom.gameModeText.textContent = `Tournament: ${match.player} vs ${match.opponent}`;
+  playerName = m.player;
+  mode = "tutorial";
+  resetBoard();
+  d.gameModeText.textContent = `Tournament: ${m.player} vs ${m.opponent}`;
   showScreen("gameScreen");
 }
-
-function handleTournamentResult(winningPlayer) {
-  if (!tournament || mode !== "tournament") return;
-  const match = tournament.matches[tournament.currentMatchIndex];
-  if (!match) return;
-
-  match.winner = winningPlayer === PLAYER_ONE ? match.player : match.opponent;
-  tournament.currentMatchIndex += 1;
-  renderTournamentBracket();
-
-  if (tournament.currentMatchIndex >= tournament.matches.length) finishTournamentRound();
+function handleTournamentResult(w) {
+  if (!tournament || mode !== "tutorial") return;
+  const m = tournament.matches[tournament.current];
+  if (!m) return;
+  m.winner = w === P1 ? m.player : m.opponent;
+  tournament.current++;
+  if (tournament.current >= tournament.matches.length) finishRound();
 }
-
-function finishTournamentRound() {
-  const winners = tournament.matches.map((match) => match.winner).filter(Boolean);
+function finishRound() {
+  const winners = tournament.matches.map((m) => m.winner).filter(Boolean);
   if (winners.length <= 1) {
     tournament.champion = winners[0] || "No winner";
-    renderTournamentBracket();
+    renderTournament();
     showScreen("tournamentScreen");
-    showFireworks();
     return;
   }
-
   tournament.players = winners;
-  tournament.round += 1;
-  buildTournamentRound();
-  renderTournamentBracket();
+  tournament.round++;
+  buildRound();
+  renderTournament();
   showScreen("tournamentScreen");
 }
-
+function applyAccess() {
+  const s = JSON.parse(localStorage.getItem("accessV301") || "null") || {
+    large: false,
+    contrast: false,
+    numbers: false,
+  };
+  document.body.classList.toggle("large-nodes", s.large);
+  document.body.classList.toggle("high-contrast", s.contrast);
+  document.body.classList.toggle("show-node-numbers", s.numbers);
+  d.largeNodesToggle.checked = s.large;
+  d.highContrastToggle.checked = s.contrast;
+  d.nodeNumbersToggle.checked = s.numbers;
+}
+function saveAccess() {
+  localStorage.setItem(
+    "accessV301",
+    JSON.stringify({
+      large: d.largeNodesToggle.checked,
+      contrast: d.highContrastToggle.checked,
+      numbers: d.nodeNumbersToggle.checked,
+    }),
+  );
+  applyAccess();
+}
+function applyTheme() {
+  document.body.classList.remove(
+    "theme-classic",
+    "theme-dark",
+    "theme-wood",
+    "theme-neon",
+    "theme-stone",
+    "theme-space",
+    "pieces-dots",
+    "pieces-stars",
+    "pieces-gems",
+    "pieces-shields",
+    "pieces-animals",
+  );
+  document.body.classList.add(`theme-${theme}`, `pieces-${pieceSet}`);
+  render();
+}
 function registerPwa() {
-  if ("serviceWorker" in navigator) {
+  if ("serviceWorker" in navigator)
     navigator.serviceWorker.register("/service-worker.js").catch(() => {});
-  }
-
-  window.addEventListener("beforeinstallprompt", (event) => {
-    event.preventDefault();
-    deferredInstallPrompt = event;
-    dom.installBtn.classList.remove("hidden");
+  window.addEventListener("beforeinstallprompt", (e) => {
+    e.preventDefault();
+    deferredInstall = e;
+    d.installBtn.classList.remove("hidden");
   });
 }
-
-function wireEvents() {
-  $("continueBtn").addEventListener("click", () => {
-    playerName = dom.playerNameInput.value.trim() || "Player";
-    difficulty = dom.difficultySelect.value;
-    soundEnabled = dom.soundToggle.checked;
+function wire() {
+  d.continueBtn?.addEventListener("click", () => {
+    playerName = d.playerNameInput.value.trim() || "Player";
+    difficulty = d.difficultySelect.value;
+    soundOn = d.soundToggle.checked;
     showScreen("homeScreen");
   });
-
-  dom.loginBtn.addEventListener("click", () => showScreen("loginScreen"));
-  dom.registerBtn.addEventListener("click", () => showScreen("registerScreen"));
-  dom.createAccountBtn.addEventListener("click", createAccount);
-  dom.loginAccountBtn.addEventListener("click", loginAccount);
-  dom.logoutBtn.addEventListener("click", logoutAccount);
-  dom.profileBtn.addEventListener("click", () => { updateProfileScreen(); showScreen("profileScreen"); });
-  dom.leaderboardBtn.addEventListener("click", () => { updateLeaderboardScreen(); showScreen("leaderboardScreen"); });
-
-  $("playPcBtn").addEventListener("click", () => {
-    difficulty = dom.difficultySelect.value;
-    resetLocalGame();
+  d.loginBtn.onclick = () => showScreen("loginScreen");
+  d.registerBtn.onclick = () => showScreen("registerScreen");
+  d.createAccountBtn.onclick = createAccount;
+  d.loginAccountBtn.onclick = loginAccount;
+  d.logoutBtn.onclick = logoutAccount;
+  d.profileBtn.onclick = profile;
+  d.leaderboardBtn.onclick = leaderboard;
+  d.playPcBtn.onclick = () => {
+    difficulty = d.difficultySelect.value;
+    resetGame();
     showScreen("gameScreen");
-  });
-
-  $("playOnlineBtn").addEventListener("click", () => showScreen("onlineMenuScreen"));
-  $("rulesBtn").addEventListener("click", () => showScreen("rulesScreen"));
-  dom.accessibilityBtn.addEventListener("click", () => showScreen("accessibilityScreen"));
-  dom.saveAccessibilityBtn.addEventListener("click", saveAccessibilitySettings);
-  dom.resetAccessibilityBtn.addEventListener("click", resetAccessibilitySettings);
-  $("dailyPuzzleBtn").addEventListener("click", () => { updatePuzzleScreen(); showScreen("dailyPuzzleScreen"); });
-  $("startDailyPuzzleBtn").addEventListener("click", () => { currentPuzzleIndex = todayPuzzleIndex(); startPuzzle(currentPuzzleIndex, false); });
-  $("nextPracticePuzzleBtn").addEventListener("click", () => { currentPuzzleIndex = (currentPuzzleIndex + 1) % puzzleBank.length; startPuzzle(currentPuzzleIndex, true); });
-  $("tournamentBtn").addEventListener("click", () => { dom.tournamentNamesInput.value = `${playerName}\nPlayer 2\nPlayer 3\nPlayer 4`; showScreen("tournamentScreen"); });
-  dom.tutorialBtn.addEventListener("click", () => showScreen("tutorialScreen"));
-  dom.startTutorialBtn.addEventListener("click", startTutorialGame);
-  dom.hintBtn.addEventListener("click", showHint);
-  $("startTournamentBtn").addEventListener("click", startTournament);
-  dom.playTournamentMatchBtn.addEventListener("click", playNextTournamentMatch);
-  $("statsBtn").addEventListener("click", () => { updateStatsUI(); showScreen("statsScreen"); });
-  $("resetStatsBtn").addEventListener("click", resetStats);
-  $("customizeBtn").addEventListener("click", () => showScreen("customizeScreen"));
-  dom.themeSelect.addEventListener("change", () => applyCustomization(dom.themeSelect.value, dom.pieceSelect.value));
-  dom.pieceSelect.addEventListener("change", () => applyCustomization(dom.themeSelect.value, dom.pieceSelect.value));
-  $("saveThemeBtn").addEventListener("click", saveCustomization);
-  $("resetThemeBtn").addEventListener("click", () => { applyCustomization("classic", "dots"); saveCustomization(); });
-  $("friendModeBtn").addEventListener("click", () => showScreen("friendScreen"));
-  $("randomModeBtn").addEventListener("click", () => { mode = "random"; startTimer(); dom.randomStatus.textContent = "Searching for an online player..."; showScreen("randomScreen"); socket.emit("random-match"); });
-  $("createRoomBtn").addEventListener("click", () => { mode = "online"; startTimer(); socket.emit("create-room"); });
-  $("joinRoomBtn").addEventListener("click", () => { const code = $("joinCodeInput").value.trim().toUpperCase(); if (code) { mode = "online"; startTimer(); socket.emit("join-room", code); } });
-  $("copyCodeBtn").addEventListener("click", async () => { if (currentRoomId) await navigator.clipboard.writeText(currentRoomId); });
-  $("copyLinkBtn").addEventListener("click", async () => { if (dom.roomLinkInput.value) await navigator.clipboard.writeText(dom.roomLinkInput.value); });
-  $("newGameBtn").addEventListener("click", () => { if (mode === "pc") resetLocalGame(); else if (mode === "puzzle") startPuzzle(activePuzzle ? activePuzzle.index : currentPuzzleIndex, activePuzzle ? activePuzzle.isPractice : true); });
-  dom.rematchBtn.addEventListener("click", () => { if (mode === "pc") resetLocalGame(); else if (mode === "puzzle") startPuzzle(activePuzzle ? activePuzzle.index : currentPuzzleIndex, activePuzzle ? activePuzzle.isPractice : true); else if (mode === "tournament") showScreen("tournamentScreen"); else { socket.emit("request-rematch"); dom.message.textContent = "Rematch requested. Waiting for opponent..."; } });
-  $("exitGameBtn").addEventListener("click", () => { stopTimer(); setModeClass("normal"); showScreen("homeScreen"); });
-
-  dom.installBtn.addEventListener("click", async () => {
-    if (!deferredInstallPrompt) return;
-    deferredInstallPrompt.prompt();
-    await deferredInstallPrompt.userChoice;
-    deferredInstallPrompt = null;
-    dom.installBtn.classList.add("hidden");
-  });
-
-  document.querySelectorAll(".back-btn[data-screen]").forEach((button) => {
-    button.addEventListener("click", () => showScreen(button.dataset.screen));
-  });
+  };
+  d.playOnlineBtn.onclick = () => showScreen("onlineMenuScreen");
+  d.dailyPuzzleBtn.onclick = () => {
+    updatePuzzle();
+    showScreen("dailyPuzzleScreen");
+  };
+  d.startDailyPuzzleBtn.onclick = () => {
+    puzzleIndex = puzzleToday();
+    startPuzzle(puzzleIndex, false);
+  };
+  d.nextPracticePuzzleBtn.onclick = () => {
+    puzzleIndex = (puzzleIndex + 1) % puzzles.length;
+    startPuzzle(puzzleIndex, true);
+  };
+  d.tournamentBtn.onclick = () => {
+    d.tournamentNamesInput.value = `${playerName}\nPlayer 2\nPlayer 3\nPlayer 4`;
+    showScreen("tournamentScreen");
+  };
+  d.startTournamentBtn.onclick = startTournament;
+  d.playTournamentMatchBtn.onclick = playTournament;
+  d.statsBtn.onclick = () => {
+    updateStatsUI();
+    showScreen("statsScreen");
+  };
+  d.resetStatsBtn.onclick = resetStats;
+  d.tutorialBtn.onclick = () => showScreen("tutorialScreen");
+  d.startTutorialBtn.onclick = () => {
+    difficulty = "easy";
+    resetGame();
+    mode = "tutorial";
+    d.gameModeText.textContent = "Tutorial Game";
+    showScreen("gameScreen");
+  };
+  d.rulesBtn.onclick = () => showScreen("rulesScreen");
+  d.accessibilityBtn.onclick = () => showScreen("accessibilityScreen");
+  d.saveAccessibilityBtn.onclick = saveAccess;
+  d.resetAccessibilityBtn.onclick = () => {
+    localStorage.removeItem("accessV301");
+    applyAccess();
+  };
+  d.customizeBtn.onclick = () => showScreen("customizeScreen");
+  d.themeSelect.onchange = () => {
+    theme = d.themeSelect.value;
+    applyTheme();
+  };
+  d.pieceSelect.onchange = () => {
+    pieceSet = d.pieceSelect.value;
+    applyTheme();
+  };
+  d.saveThemeBtn.onclick = () =>
+    localStorage.setItem("themeV301", JSON.stringify({ theme, pieceSet }));
+  d.resetThemeBtn.onclick = () => {
+    theme = "classic";
+    pieceSet = "dots";
+    d.themeSelect.value = theme;
+    d.pieceSelect.value = pieceSet;
+    applyTheme();
+  };
+  d.hintBtn.onclick = showHint;
+  d.newGameBtn.onclick = () =>
+    mode === "puzzle"
+      ? startPuzzle(
+          activePuzzle?.index ?? puzzleIndex,
+          activePuzzle?.isPractice ?? true,
+        )
+      : resetGame();
+  d.rematchBtn.onclick = () => {
+    if (mode === "puzzle")
+      startPuzzle(
+        activePuzzle?.index ?? puzzleIndex,
+        activePuzzle?.isPractice ?? true,
+      );
+    else if (mode === "online" || mode === "random") {
+      socket.emit("request-rematch");
+      d.message.textContent = "Rematch requested. Waiting for opponent...";
+    } else resetGame();
+  };
+  d.exitGameBtn.onclick = () => {
+    stopClock();
+    showScreen("homeScreen");
+  };
+  d.friendModeBtn.onclick = () => showScreen("friendScreen");
+  d.randomModeBtn.onclick = () => {
+    mode = "random";
+    startClock();
+    showScreen("randomScreen");
+    socket.emit("random-match");
+  };
+  d.createRoomBtn.onclick = () => {
+    mode = "online";
+    startClock();
+    socket.emit("create-room");
+  };
+  d.joinRoomBtn.onclick = () => {
+    const code = d.joinCodeInput.value.trim().toUpperCase();
+    if (code) {
+      mode = "online";
+      startClock();
+      socket.emit("join-room", code);
+    }
+  };
+  d.copyCodeBtn.onclick = async () => {
+    if (roomId) await navigator.clipboard.writeText(roomId);
+  };
+  d.copyLinkBtn.onclick = async () => {
+    if (d.roomLinkInput.value)
+      await navigator.clipboard.writeText(d.roomLinkInput.value);
+  };
+  d.installBtn.onclick = async () => {
+    if (!deferredInstall) return;
+    deferredInstall.prompt();
+    await deferredInstall.userChoice;
+    deferredInstall = null;
+    d.installBtn.classList.add("hidden");
+  };
+  document
+    .querySelectorAll(".back-btn[data-screen]")
+    .forEach((b) => (b.onclick = () => showScreen(b.dataset.screen)));
 }
-
 function wireSocket() {
-  socket.on("joined-room", ({ roomId, player, state }) => {
-    myOnlinePlayer = player;
-    currentRoomId = roomId;
-    selectedNode = null;
-    availableMoves = [];
-    const roomLink = `${window.location.origin}/room/${roomId}`;
-    dom.createdRoomBox.classList.remove("hidden");
-    dom.roomCodeDisplay.textContent = roomId;
-    dom.roomLinkInput.value = roomLink;
-    dom.onlineRoomBadge.textContent = `Room: ${roomId}`;
-    dom.onlineInfo.classList.remove("hidden");
-    dom.connectionBadge.textContent = "🟢 Connected";
-    dom.gameModeText.textContent = mode === "random" ? "Random Opponent" : "Play with Friend";
-    window.history.replaceState({}, "", `/room/${roomId}`);
+  socket.on("joined-room", ({ roomId: rid, player, state }) => {
+    onlinePlayer = player;
+    roomId = rid;
+    selected = null;
+    available = [];
+    const link = `${location.origin}/room/${rid}`;
+    d.createdRoomBox.classList.remove("hidden");
+    d.roomCodeDisplay.textContent = rid;
+    d.roomLinkInput.value = link;
+    d.onlineRoomBadge.textContent = `Room: ${rid}`;
+    d.onlineInfo.classList.remove("hidden");
+    d.gameModeText.textContent =
+      mode === "random" ? "Random Opponent" : "Play with Friend";
+    history.replaceState({}, "", `/room/${rid}`);
     showScreen("gameScreen");
-    applyOnlineState(state);
+    applyState(state);
   });
-
-  socket.on("room-state", (state) => { if (myOnlinePlayer) applyOnlineState(state); });
-  socket.on("stone-selected", ({ selectedNode: nodeId, availableMoves: moves }) => { selectedNode = nodeId; availableMoves = moves || []; renderBoard(); });
-  socket.on("waiting-random", (text) => { dom.randomStatus.textContent = text; });
-  socket.on("room-error", (text) => { dom.friendStatus.textContent = text; dom.message.textContent = text; playSound("error"); });
-  socket.on("opponent-left", (text) => { dom.connectionBadge.textContent = "🔴 Disconnected"; dom.message.textContent = text; });
-  socket.on("rematch-status", ({ votes, needed }) => { const voted = votes.includes(myOnlinePlayer); dom.message.textContent = voted ? `Rematch requested. Waiting for opponent (${votes.length}/${needed}).` : "Opponent wants a rematch. Click Rematch to accept."; dom.rematchBtn.classList.remove("hidden"); });
-  socket.on("rematch-started", (state) => { selectedNode = null; availableMoves = []; winner = null; winLine = []; totalMoves = 0; dom.rematchBtn.classList.add("hidden"); hideCoach(); startTimer(); applyOnlineState(state); });
+  socket.on("room-state", (s) => {
+    if (onlinePlayer) applyState(s);
+  });
+  socket.on("stone-selected", ({ selectedNode, availableMoves }) => {
+    selected = selectedNode;
+    available = availableMoves || [];
+    render();
+  });
+  socket.on("waiting-random", (t) => (d.randomStatus.textContent = t));
+  socket.on("room-error", (t) => {
+    d.friendStatus.textContent = t;
+    d.message.textContent = t;
+    ping("error");
+  });
+  socket.on("opponent-left", (t) => {
+    d.connectionBadge.textContent = "🔴 Disconnected";
+    d.message.textContent = t;
+  });
+  socket.on("rematch-status", ({ votes, needed }) => {
+    d.message.textContent = votes.includes(onlinePlayer)
+      ? `Rematch requested. Waiting for opponent (${votes.length}/${needed}).`
+      : "Opponent wants a rematch. Click Rematch to accept.";
+    d.rematchBtn.classList.remove("hidden");
+  });
+  socket.on("rematch-started", (s) => {
+    selected = null;
+    available = [];
+    gameWinner = null;
+    winLine = [];
+    moves = 0;
+    hideCoach();
+    startClock();
+    applyState(s);
+  });
 }
 
-const accessibilitySettings = loadAccessibilitySettings();
-applyAccessibilitySettings(accessibilitySettings);
-
-const customization = loadCustomization();
-applyCustomization(customization.theme, customization.pieces);
-const activeAccount = getCurrentAccount();
-if (activeAccount) {
-  playerName = activeAccount.username;
-  dom.playerNameInput.value = activeAccount.username;
-  loadStatsForAccount(activeAccount);
+const savedTheme = JSON.parse(localStorage.getItem("themeV301") || "null");
+if (savedTheme) {
+  theme = savedTheme.theme;
+  pieceSet = savedTheme.pieceSet;
+  d.themeSelect.value = theme;
+  d.pieceSelect.value = pieceSet;
+}
+applyAccess();
+applyTheme();
+const acc = currentAccount();
+if (acc) {
+  playerName = acc.username;
+  d.playerNameInput.value = acc.username;
+  loadAccountStats(acc);
 }
 updateAccountUI();
 updateStatsUI();
-updateTimerDisplay();
-wireEvents();
+updateClock();
+wire();
 wireSocket();
 registerPwa();
-
-const roomMatch = window.location.pathname.match(/^\/room\/([A-Z0-9]+)$/i);
-if (roomMatch) {
+const match = location.pathname.match(/^\/room\/([A-Z0-9]+)$/i);
+if (match) {
   mode = "online";
-  startTimer();
-  socket.emit("join-room", roomMatch[1]);
+  startClock();
+  socket.emit("join-room", match[1]);
 }

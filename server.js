@@ -6,17 +6,15 @@ import { fileURLToPath } from "url";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 const PORT = process.env.PORT || 3000;
 
-const PLAYER_ONE = "player1";
-const PLAYER_TWO = "player2";
-const MAX_STONES = 3;
-
-const winningLines = [
+const P1 = "player1";
+const P2 = "player2";
+const MAX = 3;
+const wins = [
   [0, 1, 2],
   [3, 4, 5],
   [6, 7, 8],
@@ -24,9 +22,8 @@ const winningLines = [
   [1, 4, 7],
   [2, 5, 8],
   [0, 4, 8],
-  [2, 4, 6]
+  [2, 4, 6],
 ];
-
 const neighbors = {
   0: [1, 3, 4],
   1: [0, 2, 4],
@@ -36,256 +33,216 @@ const neighbors = {
   5: [2, 4, 8],
   6: [3, 7, 4],
   7: [6, 8, 4],
-  8: [5, 7, 4]
+  8: [5, 7, 4],
 };
-
 const rooms = new Map();
-let waitingSocketId = null;
+let waiting = null;
 
 app.use(express.static(path.join(__dirname, "public")));
+app.get("/room/:roomId", (_req, res) =>
+  res.sendFile(path.join(__dirname, "public", "index.html")),
+);
 
-app.get("/room/:roomId", (_req, res) => {
-  res.sendFile(path.join(__dirname, "public", "index.html"));
-});
-
-function createRoomId() {
-  let roomId;
-  do {
-    roomId = Math.random().toString(36).slice(2, 8).toUpperCase();
-  } while (rooms.has(roomId));
-  return roomId;
+function id() {
+  let value;
+  do value = Math.random().toString(36).slice(2, 8).toUpperCase();
+  while (rooms.has(value));
+  return value;
 }
-
-function createRoom(roomId) {
+function room(id) {
   return {
-    id: roomId,
+    id,
     players: {},
     sockets: {},
     board: Array(9).fill(null),
-    currentTurn: PLAYER_ONE,
+    turn: P1,
     phase: "placing",
     selected: {},
     winner: null,
     winLine: [],
-    moveCount: 0,
-    rematchVotes: new Set()
+    moves: 0,
+    votes: new Set(),
   };
 }
-
-function getPlayerCount(room) {
-  return Object.keys(room.players).length;
+function count(r, p) {
+  return r.board.filter((x) => x === p).length;
 }
-
-function countStones(room, player) {
-  return room.board.filter((owner) => owner === player).length;
+function movement(r) {
+  return count(r, P1) === MAX && count(r, P2) === MAX;
 }
-
-function isMovementPhase(room) {
-  return countStones(room, PLAYER_ONE) === MAX_STONES && countStones(room, PLAYER_TWO) === MAX_STONES;
+function other(p) {
+  return p === P1 ? P2 : P1;
 }
-
-function otherPlayer(player) {
-  return player === PLAYER_ONE ? PLAYER_TWO : PLAYER_ONE;
+function winner(board, p) {
+  return wins.find((line) => line.every((i) => board[i] === p)) || null;
 }
-
-function findWinner(board, player) {
-  return winningLines.find((line) => line.every((nodeId) => board[nodeId] === player)) || null;
+function emptyNs(board, i) {
+  return neighbors[i].filter((n) => board[n] === null);
 }
-
-function emptyNeighbors(board, nodeId) {
-  return neighbors[nodeId].filter((neighborId) => board[neighborId] === null);
-}
-
-function publicState(room) {
+function state(r) {
   return {
-    roomId: room.id,
-    board: room.board,
-    currentTurn: room.currentTurn,
-    phase: room.phase,
-    winner: room.winner,
-    winLine: room.winLine,
-    moveCount: room.moveCount,
-    playerCount: getPlayerCount(room),
-    rematchVotes: Array.from(room.rematchVotes)
+    roomId: r.id,
+    board: r.board,
+    currentTurn: r.turn,
+    phase: r.phase,
+    winner: r.winner,
+    winLine: r.winLine,
+    moveCount: r.moves,
+    playerCount: Object.keys(r.players).length,
+    rematchVotes: [...r.votes],
   };
 }
-
-function emitRoom(room) {
-  io.to(room.id).emit("room-state", publicState(room));
+function emit(r) {
+  io.to(r.id).emit("room-state", state(r));
 }
-
-function joinRoom(socket, roomId) {
-  let room = rooms.get(roomId);
-  if (!room) {
-    room = createRoom(roomId);
-    rooms.set(roomId, room);
+function join(socket, roomId) {
+  let r = rooms.get(roomId);
+  if (!r) {
+    r = room(roomId);
+    rooms.set(roomId, r);
   }
-
-  if (getPlayerCount(room) >= 2 && !room.players[socket.id]) {
-    socket.emit("room-error", "This room is full.");
-    return;
-  }
-
-  let player = room.players[socket.id];
+  if (Object.keys(r.players).length >= 2 && !r.players[socket.id])
+    return socket.emit("room-error", "This room is full.");
+  let player = r.players[socket.id];
   if (!player) {
-    player = room.sockets[PLAYER_ONE] ? PLAYER_TWO : PLAYER_ONE;
-    room.players[socket.id] = player;
-    room.sockets[player] = socket.id;
+    player = r.sockets[P1] ? P2 : P1;
+    r.players[socket.id] = player;
+    r.sockets[player] = socket.id;
   }
-
-  socket.join(room.id);
-  socket.data.roomId = room.id;
+  socket.join(r.id);
+  socket.data.roomId = r.id;
   socket.data.player = player;
-  socket.emit("joined-room", { roomId: room.id, player, state: publicState(room) });
-  emitRoom(room);
+  socket.emit("joined-room", { roomId: r.id, player, state: state(r) });
+  emit(r);
 }
-
-function finishTurn(room, player) {
-  const win = findWinner(room.board, player);
-  if (win) {
-    room.winner = player;
-    room.winLine = win;
+function finish(r, p) {
+  const line = winner(r.board, p);
+  if (line) {
+    r.winner = p;
+    r.winLine = line;
     return;
   }
-
-  if (isMovementPhase(room)) {
-    room.phase = "moving";
-  }
-
-  room.currentTurn = otherPlayer(player);
+  if (movement(r)) r.phase = "moving";
+  r.turn = other(p);
 }
-
-function handleOnlineAction(socket, data) {
-  const room = rooms.get(socket.data.roomId);
-  const player = socket.data.player;
-  const nodeId = Number(data.nodeId);
-
-  if (!room || room.winner) return;
-  if (getPlayerCount(room) < 2) return socket.emit("room-error", "Waiting for opponent.");
-  if (room.currentTurn !== player) return socket.emit("room-error", "It is not your turn.");
-  if (!Number.isInteger(nodeId) || nodeId < 0 || nodeId > 8) return;
-
-  if (room.phase === "placing") {
-    if (room.board[nodeId] !== null || countStones(room, player) >= MAX_STONES) return;
-    room.board[nodeId] = player;
-    room.moveCount += 1;
-    room.rematchVotes.clear();
-    finishTurn(room, player);
-    emitRoom(room);
+function action(socket, data) {
+  const r = rooms.get(socket.data.roomId);
+  const p = socket.data.player;
+  const node = Number(data.nodeId);
+  if (
+    !r ||
+    r.winner ||
+    r.turn !== p ||
+    !Number.isInteger(node) ||
+    node < 0 ||
+    node > 8
+  )
+    return;
+  if (Object.keys(r.players).length < 2)
+    return socket.emit("room-error", "Waiting for opponent.");
+  if (r.phase === "placing") {
+    if (r.board[node] !== null || count(r, p) >= MAX) return;
+    r.board[node] = p;
+    r.moves++;
+    r.votes.clear();
+    finish(r, p);
+    emit(r);
     return;
   }
-
-  const selected = room.selected[player];
-
+  const selected = r.selected[p];
   if (selected === undefined || selected === null) {
-    if (room.board[nodeId] === player && emptyNeighbors(room.board, nodeId).length > 0) {
-      room.selected[player] = nodeId;
+    if (r.board[node] === p && emptyNs(r.board, node).length) {
+      r.selected[p] = node;
       socket.emit("stone-selected", {
-        selectedNode: nodeId,
-        availableMoves: emptyNeighbors(room.board, nodeId)
+        selectedNode: node,
+        availableMoves: emptyNs(r.board, node),
       });
     }
     return;
   }
-
-  if (nodeId === selected) {
-    room.selected[player] = null;
+  if (node === selected) {
+    r.selected[p] = null;
     socket.emit("stone-selected", { selectedNode: null, availableMoves: [] });
     return;
   }
-
-  if (room.board[nodeId] === player && emptyNeighbors(room.board, nodeId).length > 0) {
-    room.selected[player] = nodeId;
+  if (r.board[node] === p && emptyNs(r.board, node).length) {
+    r.selected[p] = node;
     socket.emit("stone-selected", {
-      selectedNode: nodeId,
-      availableMoves: emptyNeighbors(room.board, nodeId)
+      selectedNode: node,
+      availableMoves: emptyNs(r.board, node),
     });
     return;
   }
-
-  if (room.board[nodeId] === null && emptyNeighbors(room.board, selected).includes(nodeId)) {
-    room.board[selected] = null;
-    room.board[nodeId] = player;
-    room.selected[player] = null;
-    room.moveCount += 1;
-    room.rematchVotes.clear();
-    finishTurn(room, player);
-    io.to(room.id).emit("stone-selected", { selectedNode: null, availableMoves: [] });
-    emitRoom(room);
+  if (r.board[node] === null && emptyNs(r.board, selected).includes(node)) {
+    r.board[selected] = null;
+    r.board[node] = p;
+    r.selected[p] = null;
+    r.moves++;
+    r.votes.clear();
+    finish(r, p);
+    io.to(r.id).emit("stone-selected", {
+      selectedNode: null,
+      availableMoves: [],
+    });
+    emit(r);
   }
 }
-
-function resetRoom(room) {
-  room.board = Array(9).fill(null);
-  room.currentTurn = PLAYER_ONE;
-  room.phase = "placing";
-  room.selected = {};
-  room.winner = null;
-  room.winLine = [];
-  room.moveCount = 0;
-  room.rematchVotes.clear();
+function reset(r) {
+  r.board = Array(9).fill(null);
+  r.turn = P1;
+  r.phase = "placing";
+  r.selected = {};
+  r.winner = null;
+  r.winLine = [];
+  r.moves = 0;
+  r.votes.clear();
 }
 
 io.on("connection", (socket) => {
-  socket.on("create-room", () => joinRoom(socket, createRoomId()));
-
-  socket.on("join-room", (roomId) => {
-    joinRoom(socket, String(roomId).trim().toUpperCase());
-  });
-
+  socket.on("create-room", () => join(socket, id()));
+  socket.on("join-room", (rid) =>
+    join(socket, String(rid).trim().toUpperCase()),
+  );
   socket.on("random-match", () => {
-    if (waitingSocketId && waitingSocketId !== socket.id) {
-      const otherSocket = io.sockets.sockets.get(waitingSocketId);
-      waitingSocketId = null;
-      if (otherSocket) {
-        const roomId = createRoomId();
-        rooms.set(roomId, createRoom(roomId));
-        joinRoom(otherSocket, roomId);
-        joinRoom(socket, roomId);
+    if (waiting && waiting !== socket.id) {
+      const otherSock = io.sockets.sockets.get(waiting);
+      waiting = null;
+      if (otherSock) {
+        const rid = id();
+        rooms.set(rid, room(rid));
+        join(otherSock, rid);
+        join(socket, rid);
       }
       return;
     }
-
-    waitingSocketId = socket.id;
+    waiting = socket.id;
     socket.emit("waiting-random", "Searching for an online player...");
   });
-
-  socket.on("online-action", (data) => handleOnlineAction(socket, data || {}));
-
+  socket.on("online-action", (data) => action(socket, data || {}));
   socket.on("request-rematch", () => {
-    const room = rooms.get(socket.data.roomId);
-    const player = socket.data.player;
-    if (!room || !player) return;
-
-    room.rematchVotes.add(player);
-    if (room.rematchVotes.size >= 2 && getPlayerCount(room) === 2) {
-      resetRoom(room);
-      io.to(room.id).emit("rematch-started", publicState(room));
-      emitRoom(room);
-      return;
-    }
-
-    io.to(room.id).emit("rematch-status", {
-      votes: Array.from(room.rematchVotes),
-      needed: 2
-    });
+    const r = rooms.get(socket.data.roomId);
+    const p = socket.data.player;
+    if (!r || !p) return;
+    r.votes.add(p);
+    if (r.votes.size >= 2) {
+      reset(r);
+      io.to(r.id).emit("rematch-started", state(r));
+      emit(r);
+    } else
+      io.to(r.id).emit("rematch-status", { votes: [...r.votes], needed: 2 });
   });
-
   socket.on("disconnect", () => {
-    if (waitingSocketId === socket.id) waitingSocketId = null;
-    const room = rooms.get(socket.data.roomId);
-    const player = socket.data.player;
-    if (!room || !player) return;
-
-    delete room.players[socket.id];
-    delete room.sockets[player];
-    socket.to(room.id).emit("opponent-left", "Opponent left the game.");
-
-    if (getPlayerCount(room) === 0) rooms.delete(room.id);
-    else emitRoom(room);
+    if (waiting === socket.id) waiting = null;
+    const r = rooms.get(socket.data.roomId);
+    const p = socket.data.player;
+    if (!r || !p) return;
+    delete r.players[socket.id];
+    delete r.sockets[p];
+    socket.to(r.id).emit("opponent-left", "Opponent left the game.");
+    if (Object.keys(r.players).length === 0) rooms.delete(r.id);
+    else emit(r);
   });
 });
-
-server.listen(PORT, () => {
-  console.log(`Three Stones running at http://localhost:${PORT}`);
-});
+server.listen(PORT, () =>
+  console.log(`Three Stones running at http://localhost:${PORT}`),
+);
