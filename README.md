@@ -1,16 +1,19 @@
-# Three Stones v2.2 Online Rematch
+# Three Stones v2.5.1 Regular Format
 
-This version adds Phase 2 online rematch support.
+This rebuild keeps the project files readable and normally formatted.
 
-## Included
+## Features
 
-- Everything from v2.1 Phase 1
-- Online rematch button
-- Both players must request rematch
-- Room resets automatically when both players agree
-- Online move counter is synchronized from the server
-- Online timer restarts after rematch
-- Rematch status messages
+- Play vs PC
+- Play online with a friend by room code/link
+- Random online opponent
+- Online rematch
+- Fixed Daily Puzzle mode
+- Practice puzzles
+- Local tournament mode
+- Player name, difficulty, timer, sound toggle, move counter
+- Rankings, stats, and match history in localStorage
+- Themes and piece sets saved in localStorage
 
 ## Run
 

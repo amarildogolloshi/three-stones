@@ -39,50 +39,60 @@ const neighbors = {
   8: [5, 7, 4]
 };
 
+const $ = (id) => document.getElementById(id);
+
 const screens = document.querySelectorAll(".screen");
-const boardNodes = document.getElementById("boardNodes");
-const message = document.getElementById("message");
-const turnBox = document.getElementById("turnBox");
-const playerOneCount = document.getElementById("playerOneCount");
-const playerTwoCount = document.getElementById("playerTwoCount");
-const playerOneLabel = document.getElementById("playerOneLabel");
-const playerTwoLabel = document.getElementById("playerTwoLabel");
-const gameModeText = document.getElementById("gameModeText");
-const onlineInfo = document.getElementById("onlineInfo");
-const onlineRoomBadge = document.getElementById("onlineRoomBadge");
-const connectionBadge = document.getElementById("connectionBadge");
-const createdRoomBox = document.getElementById("createdRoomBox");
-const roomCodeDisplay = document.getElementById("roomCodeDisplay");
-const roomLinkInput = document.getElementById("roomLinkInput");
-const friendStatus = document.getElementById("friendStatus");
-const randomStatus = document.getElementById("randomStatus");
-const playerNameInput = document.getElementById("playerNameInput");
-const difficultySelect = document.getElementById("difficultySelect");
-const soundToggle = document.getElementById("soundToggle");
-const moveCounter = document.getElementById("moveCounter");
-const timerDisplay = document.getElementById("timerDisplay");
-const difficultyDisplay = document.getElementById("difficultyDisplay");
-const rematchBtn = document.getElementById("rematchBtn");
-const fireworks = document.getElementById("fireworks");
-const rankTitle = document.getElementById("rankTitle");
-const rankPoints = document.getElementById("rankPoints");
-const statGames = document.getElementById("statGames");
-const statWins = document.getElementById("statWins");
-const statWinRate = document.getElementById("statWinRate");
-const detailRankTitle = document.getElementById("detailRankTitle");
-const detailRankPoints = document.getElementById("detailRankPoints");
-const detailGames = document.getElementById("detailGames");
-const detailWins = document.getElementById("detailWins");
-const detailLosses = document.getElementById("detailLosses");
-const detailDraws = document.getElementById("detailDraws");
-const detailWinRate = document.getElementById("detailWinRate");
-const detailBestTime = document.getElementById("detailBestTime");
-const detailFewestMoves = document.getElementById("detailFewestMoves");
-const matchHistoryList = document.getElementById("matchHistoryList");
-const themeSelect = document.getElementById("themeSelect");
-const pieceSelect = document.getElementById("pieceSelect");
-const previewPieceOne = document.getElementById("previewPieceOne");
-const previewPieceTwo = document.getElementById("previewPieceTwo");
+const boardNodes = $("boardNodes");
+const message = $("message");
+const turnBox = $("turnBox");
+const playerOneCount = $("playerOneCount");
+const playerTwoCount = $("playerTwoCount");
+const playerOneLabel = $("playerOneLabel");
+const playerTwoLabel = $("playerTwoLabel");
+const gameModeText = $("gameModeText");
+const onlineInfo = $("onlineInfo");
+const onlineRoomBadge = $("onlineRoomBadge");
+const connectionBadge = $("connectionBadge");
+const createdRoomBox = $("createdRoomBox");
+const roomCodeDisplay = $("roomCodeDisplay");
+const roomLinkInput = $("roomLinkInput");
+const friendStatus = $("friendStatus");
+const randomStatus = $("randomStatus");
+const playerNameInput = $("playerNameInput");
+const difficultySelect = $("difficultySelect");
+const soundToggle = $("soundToggle");
+const moveCounter = $("moveCounter");
+const timerDisplay = $("timerDisplay");
+const difficultyDisplay = $("difficultyDisplay");
+const rematchBtn = $("rematchBtn");
+const fireworks = $("fireworks");
+const rankTitle = $("rankTitle");
+const rankPoints = $("rankPoints");
+const statGames = $("statGames");
+const statWins = $("statWins");
+const statWinRate = $("statWinRate");
+const detailRankTitle = $("detailRankTitle");
+const detailRankPoints = $("detailRankPoints");
+const detailGames = $("detailGames");
+const detailWins = $("detailWins");
+const detailLosses = $("detailLosses");
+const detailWinRate = $("detailWinRate");
+const detailBestTime = $("detailBestTime");
+const detailFewestMoves = $("detailFewestMoves");
+const matchHistoryList = $("matchHistoryList");
+const themeSelect = $("themeSelect");
+const pieceSelect = $("pieceSelect");
+const dailyPuzzleSubtitle = $("dailyPuzzleSubtitle");
+const challengeBadge = $("challengeBadge");
+const puzzleInstruction = $("puzzleInstruction");
+const puzzleStatus = $("puzzleStatus");
+const tournamentSizeSelect = $("tournamentSizeSelect");
+const tournamentNamesInput = $("tournamentNamesInput");
+const tournamentBracket = $("tournamentBracket");
+const tournamentRoundTitle = $("tournamentRoundTitle");
+const bracketList = $("bracketList");
+const tournamentStatus = $("tournamentStatus");
+const playTournamentMatchBtn = $("playTournamentMatchBtn");
 
 let mode = "pc";
 let playerName = "Player";
@@ -102,9 +112,15 @@ let elapsedSeconds = 0;
 let timerId = null;
 let audioContext = null;
 let lastRecordedGameKey = null;
+let currentTheme = "classic";
+let currentPieces = "dots";
+let activePuzzle = null;
+let currentPuzzleIndex = 0;
+let tournament = null;
 
 const STATS_KEY = "threeStonesStatsV23";
 const CUSTOMIZATION_KEY = "threeStonesCustomizationV24";
+const PUZZLE_KEY = "threeStonesPuzzleV25";
 
 const pieceSets = {
   dots: { one: "●", two: "●", empty: "+" },
@@ -114,280 +130,47 @@ const pieceSets = {
   animals: { one: "🐺", two: "🦊", empty: "+" }
 };
 
-let currentTheme = "classic";
-let currentPieces = "dots";
-
-
-
-function loadCustomization() {
-  try {
-    return JSON.parse(localStorage.getItem(CUSTOMIZATION_KEY)) || {
-      theme: "classic",
-      pieces: "dots"
-    };
-  } catch {
-    return {
-      theme: "classic",
-      pieces: "dots"
-    };
+const puzzleBank = [
+  {
+    title: "Win in 1",
+    instruction: "Place your blue stone on the center node to complete the diagonal.",
+    board: [PLAYER_ONE, null, PLAYER_TWO, null, null, PLAYER_TWO, null, null, PLAYER_ONE],
+    phase: "placing",
+    solution: 4
+  },
+  {
+    title: "Win in 1",
+    instruction: "Place your blue stone on the middle-right node to complete the center row.",
+    board: [PLAYER_TWO, null, null, PLAYER_ONE, PLAYER_ONE, null, null, PLAYER_TWO, null],
+    phase: "placing",
+    solution: 5
+  },
+  {
+    title: "Move to Win",
+    instruction: "Move the selected blue stone from the center to the top-right node to complete the top row.",
+    board: [PLAYER_ONE, PLAYER_ONE, null, PLAYER_TWO, PLAYER_ONE, PLAYER_TWO, PLAYER_TWO, null, null],
+    phase: "moving",
+    solutionFrom: 4,
+    solution: 2
+  },
+  {
+    title: "Win in 1",
+    instruction: "Place your blue stone on the bottom-middle node to complete the column.",
+    board: [PLAYER_TWO, PLAYER_ONE, null, null, PLAYER_ONE, PLAYER_TWO, null, null, null],
+    phase: "placing",
+    solution: 7
   }
-}
-
-function saveCustomization() {
-  localStorage.setItem(CUSTOMIZATION_KEY, JSON.stringify({
-    theme: currentTheme,
-    pieces: currentPieces
-  }));
-}
-
-function applyCustomization(theme = currentTheme, pieces = currentPieces) {
-  document.body.classList.remove(
-    "theme-classic",
-    "theme-dark",
-    "theme-wood",
-    "theme-neon",
-    "theme-stone",
-    "theme-space",
-    "pieces-dots",
-    "pieces-stars",
-    "pieces-gems",
-    "pieces-shields",
-    "pieces-animals"
-  );
-
-  document.body.classList.add(`theme-${theme}`, `pieces-${pieces}`);
-  currentTheme = theme;
-  currentPieces = pieces;
-
-  if (themeSelect) themeSelect.value = theme;
-  if (pieceSelect) pieceSelect.value = pieces;
-
-  const set = pieceSets[pieces] || pieceSets.dots;
-  if (previewPieceOne) previewPieceOne.textContent = set.one;
-  if (previewPieceTwo) previewPieceTwo.textContent = set.two;
-
-  renderBoard();
-}
-
-function getPieceSymbol(owner) {
-  const set = pieceSets[currentPieces] || pieceSets.dots;
-
-  if (owner === PLAYER_ONE) return set.one;
-  if (owner === PLAYER_TWO) return set.two;
-  return set.empty;
-}
-
-function createDefaultStats() {
-  return {
-    rating: 1000,
-    games: 0,
-    wins: 0,
-    losses: 0,
-    draws: 0,
-    bestTime: null,
-    fewestMoves: null,
-    history: []
-  };
-}
-
-function loadStats() {
-  try {
-    return JSON.parse(localStorage.getItem(STATS_KEY)) || createDefaultStats();
-  } catch {
-    return createDefaultStats();
-  }
-}
-
-function saveStats(stats) {
-  localStorage.setItem(STATS_KEY, JSON.stringify(stats));
-}
-
-function getRankName(rating) {
-  if (rating >= 1800) return "Diamond";
-  if (rating >= 1600) return "Platinum";
-  if (rating >= 1400) return "Gold";
-  if (rating >= 1200) return "Silver";
-  return "Bronze";
-}
-
-function formatTime(totalSeconds) {
-  if (totalSeconds === null || totalSeconds === undefined) return "--:--";
-  const minutes = String(Math.floor(totalSeconds / 60)).padStart(2, "0");
-  const seconds = String(totalSeconds % 60).padStart(2, "0");
-  return `${minutes}:${seconds}`;
-}
-
-function calculateRatingChange(result, gameMode) {
-  const base = gameMode === "pc" ? 18 : 26;
-  if (result === "win") return base;
-  if (result === "loss") return -base;
-  return 4;
-}
-
-function recordMatch(result, gameMode, opponentName) {
-  const stats = loadStats();
-  const ratingChange = calculateRatingChange(result, gameMode);
-
-  stats.games += 1;
-  if (result === "win") stats.wins += 1;
-  if (result === "loss") stats.losses += 1;
-  if (result === "draw") stats.draws += 1;
-
-  stats.rating = Math.max(100, stats.rating + ratingChange);
-
-  if (result === "win") {
-    if (stats.bestTime === null || elapsedSeconds < stats.bestTime) {
-      stats.bestTime = elapsedSeconds;
-    }
-
-    if (stats.fewestMoves === null || totalMoves < stats.fewestMoves) {
-      stats.fewestMoves = totalMoves;
-    }
-  }
-
-  stats.history.unshift({
-    id: Date.now(),
-    result,
-    mode: gameMode,
-    opponent: opponentName,
-    moves: totalMoves,
-    seconds: elapsedSeconds,
-    ratingChange,
-    date: new Date().toLocaleString()
-  });
-
-  stats.history = stats.history.slice(0, 20);
-  saveStats(stats);
-  updateStatsUI();
-}
-
-function updateStatsUI() {
-  const stats = loadStats();
-  const rank = getRankName(stats.rating);
-  const winRate = stats.games ? Math.round((stats.wins / stats.games) * 100) : 0;
-
-  rankTitle.textContent = rank;
-  rankPoints.textContent = `${stats.rating} RP`;
-  statGames.textContent = stats.games;
-  statWins.textContent = stats.wins;
-  statWinRate.textContent = `${winRate}%`;
-
-  detailRankTitle.textContent = rank;
-  detailRankPoints.textContent = stats.rating;
-  detailGames.textContent = stats.games;
-  detailWins.textContent = stats.wins;
-  detailLosses.textContent = stats.losses;
-  detailDraws.textContent = stats.draws;
-  detailWinRate.textContent = `${winRate}%`;
-  detailBestTime.textContent = formatTime(stats.bestTime);
-  detailFewestMoves.textContent = stats.fewestMoves === null ? "--" : stats.fewestMoves;
-
-  matchHistoryList.innerHTML = "";
-
-  if (stats.history.length === 0) {
-    matchHistoryList.innerHTML = '<p class="history-meta">No matches yet. Play a game to start your history.</p>';
-    return;
-  }
-
-  stats.history.forEach((match) => {
-    const item = document.createElement("div");
-    item.className = "history-item";
-
-    const symbol = match.result === "win" ? "W" : match.result === "loss" ? "L" : "D";
-    const ratingText = match.ratingChange > 0 ? `+${match.ratingChange}` : String(match.ratingChange);
-
-    item.innerHTML = `
-      <div class="history-result ${match.result}">${symbol}</div>
-      <div>
-        <strong>${match.mode === "pc" ? "vs PC" : "Online"} ${match.opponent ? `vs ${match.opponent}` : ""}</strong>
-        <div class="history-meta">${match.date} • ${match.moves} moves • ${formatTime(match.seconds)}</div>
-      </div>
-      <div class="history-rp">${ratingText} RP</div>
-    `;
-
-    matchHistoryList.appendChild(item);
-  });
-}
-
-function resetStats() {
-  saveStats(createDefaultStats());
-  updateStatsUI();
-}
+];
 
 function showScreen(screenId) {
   screens.forEach((screen) => screen.classList.remove("active"));
-  document.getElementById(screenId).classList.add("active");
+  $(screenId).classList.add("active");
 }
 
-function startTimer() {
-  stopTimer();
-  elapsedSeconds = 0;
-  updateTimerDisplay();
-  timerId = setInterval(() => {
-    elapsedSeconds += 1;
-    updateTimerDisplay();
-  }, 1000);
-}
-
-function stopTimer() {
-  if (timerId) {
-    clearInterval(timerId);
-    timerId = null;
-  }
-}
-
-function updateTimerDisplay() {
-  const minutes = String(Math.floor(elapsedSeconds / 60)).padStart(2, "0");
-  const seconds = String(elapsedSeconds % 60).padStart(2, "0");
-  timerDisplay.textContent = `${minutes}:${seconds}`;
-}
-
-function playSound(type) {
-  if (!soundEnabled) return;
-
-  if (!audioContext) {
-    audioContext = new AudioContext();
-  }
-
-  const oscillator = audioContext.createOscillator();
-  const gain = audioContext.createGain();
-  const now = audioContext.currentTime;
-
-  const frequencies = {
-    place: 360,
-    move: 520,
-    win: 760,
-    error: 180
-  };
-
-  oscillator.frequency.setValueAtTime(frequencies[type] || 360, now);
-  oscillator.type = type === "win" ? "triangle" : "sine";
-  gain.gain.setValueAtTime(0.12, now);
-  gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
-
-  oscillator.connect(gain);
-  gain.connect(audioContext.destination);
-  oscillator.start(now);
-  oscillator.stop(now + 0.2);
-}
-
-function showFireworks() {
-  fireworks.classList.remove("hidden");
-  fireworks.innerHTML = "";
-
-  for (let i = 0; i < 18; i += 1) {
-    const dot = document.createElement("span");
-    dot.className = "firework";
-    dot.style.left = `${10 + Math.random() * 80}%`;
-    dot.style.top = `${10 + Math.random() * 70}%`;
-    dot.style.background = ["#facc15", "#22c55e", "#38bdf8", "#fb7185"][i % 4];
-    fireworks.appendChild(dot);
-  }
-
-  setTimeout(() => {
-    fireworks.classList.add("hidden");
-    fireworks.innerHTML = "";
-  }, 1200);
+function bodySetMode(modeName) {
+  document.body.classList.remove("puzzle-active", "tournament-active");
+  if (modeName === "puzzle") document.body.classList.add("puzzle-active");
+  if (modeName === "tournament") document.body.classList.add("tournament-active");
 }
 
 function countStones(player) {
@@ -416,6 +199,313 @@ function getMovableStones(player, testBoard = board) {
     .filter((nodeId) => nodeId !== null && getEmptyNeighbors(nodeId, testBoard).length > 0);
 }
 
+function formatTime(totalSeconds) {
+  if (totalSeconds === null || totalSeconds === undefined) return "--:--";
+  const minutes = String(Math.floor(totalSeconds / 60)).padStart(2, "0");
+  const seconds = String(totalSeconds % 60).padStart(2, "0");
+  return `${minutes}:${seconds}`;
+}
+
+function startTimer() {
+  stopTimer();
+  elapsedSeconds = 0;
+  updateTimerDisplay();
+  timerId = setInterval(() => {
+    elapsedSeconds += 1;
+    updateTimerDisplay();
+  }, 1000);
+}
+
+function stopTimer() {
+  if (timerId) clearInterval(timerId);
+  timerId = null;
+}
+
+function updateTimerDisplay() {
+  timerDisplay.textContent = formatTime(elapsedSeconds);
+}
+
+function playSound(type) {
+  if (!soundEnabled) return;
+  if (!audioContext) audioContext = new AudioContext();
+
+  const oscillator = audioContext.createOscillator();
+  const gain = audioContext.createGain();
+  const now = audioContext.currentTime;
+  const frequencies = { place: 360, move: 520, win: 760, error: 180 };
+
+  oscillator.frequency.setValueAtTime(frequencies[type] || 360, now);
+  oscillator.type = type === "win" ? "triangle" : "sine";
+  gain.gain.setValueAtTime(0.12, now);
+  gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+  oscillator.connect(gain);
+  gain.connect(audioContext.destination);
+  oscillator.start(now);
+  oscillator.stop(now + 0.2);
+}
+
+function showFireworks() {
+  fireworks.classList.remove("hidden");
+  fireworks.innerHTML = "";
+
+  for (let i = 0; i < 18; i += 1) {
+    const dot = document.createElement("span");
+    dot.className = "firework";
+    dot.style.left = `${10 + Math.random() * 80}%`;
+    dot.style.top = `${10 + Math.random() * 70}%`;
+    dot.style.background = ["#facc15", "#22c55e", "#38bdf8", "#fb7185"][i % 4];
+    fireworks.appendChild(dot);
+  }
+
+  setTimeout(() => {
+    fireworks.classList.add("hidden");
+    fireworks.innerHTML = "";
+  }, 1200);
+}
+
+function createDefaultStats() {
+  return {
+    rating: 1000,
+    games: 0,
+    wins: 0,
+    losses: 0,
+    bestTime: null,
+    fewestMoves: null,
+    history: []
+  };
+}
+
+function loadStats() {
+  try {
+    return JSON.parse(localStorage.getItem(STATS_KEY)) || createDefaultStats();
+  } catch {
+    return createDefaultStats();
+  }
+}
+
+function saveStats(stats) {
+  localStorage.setItem(STATS_KEY, JSON.stringify(stats));
+}
+
+function getRankName(rating) {
+  if (rating >= 1800) return "Diamond";
+  if (rating >= 1600) return "Platinum";
+  if (rating >= 1400) return "Gold";
+  if (rating >= 1200) return "Silver";
+  return "Bronze";
+}
+
+function calculateRatingChange(result, gameMode) {
+  const base = gameMode === "pc" ? 18 : 26;
+  if (result === "win") return base;
+  if (result === "loss") return -base;
+  return 4;
+}
+
+function recordMatch(result, gameMode, opponentName) {
+  const stats = loadStats();
+  const ratingChange = calculateRatingChange(result, gameMode);
+
+  stats.games += 1;
+  if (result === "win") stats.wins += 1;
+  if (result === "loss") stats.losses += 1;
+  stats.rating = Math.max(100, stats.rating + ratingChange);
+
+  if (result === "win") {
+    if (stats.bestTime === null || elapsedSeconds < stats.bestTime) stats.bestTime = elapsedSeconds;
+    if (stats.fewestMoves === null || totalMoves < stats.fewestMoves) stats.fewestMoves = totalMoves;
+  }
+
+  stats.history.unshift({
+    id: Date.now(),
+    result,
+    mode: gameMode,
+    opponent: opponentName,
+    moves: totalMoves,
+    seconds: elapsedSeconds,
+    ratingChange,
+    date: new Date().toLocaleString()
+  });
+
+  stats.history = stats.history.slice(0, 20);
+  saveStats(stats);
+  updateStatsUI();
+}
+
+function updateStatsUI() {
+  const stats = loadStats();
+  const rank = getRankName(stats.rating);
+  const winRate = stats.games ? Math.round((stats.wins / stats.games) * 100) : 0;
+
+  rankTitle.textContent = rank;
+  rankPoints.textContent = `${stats.rating} RP`;
+  statGames.textContent = stats.games;
+  statWins.textContent = stats.wins;
+  statWinRate.textContent = `${winRate}%`;
+  detailRankTitle.textContent = rank;
+  detailRankPoints.textContent = stats.rating;
+  detailGames.textContent = stats.games;
+  detailWins.textContent = stats.wins;
+  detailLosses.textContent = stats.losses;
+  detailWinRate.textContent = `${winRate}%`;
+  detailBestTime.textContent = formatTime(stats.bestTime);
+  detailFewestMoves.textContent = stats.fewestMoves === null ? "--" : stats.fewestMoves;
+  matchHistoryList.innerHTML = "";
+
+  if (stats.history.length === 0) {
+    matchHistoryList.innerHTML = '<p class="history-meta">No matches yet. Play a game to start your history.</p>';
+    return;
+  }
+
+  stats.history.forEach((match) => {
+    const item = document.createElement("div");
+    item.className = "history-item";
+    const symbol = match.result === "win" ? "W" : match.result === "loss" ? "L" : "D";
+    const ratingText = match.ratingChange > 0 ? `+${match.ratingChange}` : String(match.ratingChange);
+
+    item.innerHTML = `
+      <div class="history-result ${match.result}">${symbol}</div>
+      <div>
+        <strong>${match.mode === "pc" ? "vs PC" : "Online"} ${match.opponent ? `vs ${match.opponent}` : ""}</strong>
+        <div class="history-meta">${match.date} • ${match.moves} moves • ${formatTime(match.seconds)}</div>
+      </div>
+      <div class="history-rp">${ratingText} RP</div>
+    `;
+
+    matchHistoryList.appendChild(item);
+  });
+}
+
+function resetStats() {
+  saveStats(createDefaultStats());
+  updateStatsUI();
+}
+
+function loadCustomization() {
+  try {
+    return JSON.parse(localStorage.getItem(CUSTOMIZATION_KEY)) || { theme: "classic", pieces: "dots" };
+  } catch {
+    return { theme: "classic", pieces: "dots" };
+  }
+}
+
+function saveCustomization() {
+  localStorage.setItem(CUSTOMIZATION_KEY, JSON.stringify({ theme: currentTheme, pieces: currentPieces }));
+}
+
+function applyCustomization(theme = currentTheme, pieces = currentPieces) {
+  document.body.classList.remove(
+    "theme-classic",
+    "theme-dark",
+    "theme-wood",
+    "theme-neon",
+    "theme-stone",
+    "theme-space",
+    "pieces-dots",
+    "pieces-stars",
+    "pieces-gems",
+    "pieces-shields",
+    "pieces-animals"
+  );
+
+  document.body.classList.add(`theme-${theme}`, `pieces-${pieces}`);
+  currentTheme = theme;
+  currentPieces = pieces;
+  themeSelect.value = theme;
+  pieceSelect.value = pieces;
+  renderBoard();
+}
+
+function getPieceSymbol(owner) {
+  const set = pieceSets[currentPieces] || pieceSets.dots;
+  if (owner === PLAYER_ONE) return set.one;
+  if (owner === PLAYER_TWO) return set.two;
+  return set.empty;
+}
+
+function getTodayPuzzleIndex() {
+  const today = new Date();
+  const key = `${today.getFullYear()}-${today.getMonth() + 1}-${today.getDate()}`;
+  return [...key].reduce((sum, char) => sum + char.charCodeAt(0), 0) % puzzleBank.length;
+}
+
+function loadPuzzleProgress() {
+  try {
+    return JSON.parse(localStorage.getItem(PUZZLE_KEY)) || {};
+  } catch {
+    return {};
+  }
+}
+
+function savePuzzleProgress(progress) {
+  localStorage.setItem(PUZZLE_KEY, JSON.stringify(progress));
+}
+
+function updatePuzzleScreen() {
+  const index = getTodayPuzzleIndex();
+  const puzzle = puzzleBank[index];
+  const dateKey = new Date().toISOString().slice(0, 10);
+  const progress = loadPuzzleProgress();
+
+  dailyPuzzleSubtitle.textContent = `Today's puzzle: ${dateKey}`;
+  challengeBadge.textContent = puzzle.title;
+  puzzleInstruction.textContent = puzzle.instruction;
+  puzzleStatus.textContent = progress[dateKey] ? "Completed today. You can still practice." : "Puzzle ready.";
+}
+
+function startPuzzle(index = getTodayPuzzleIndex(), isPractice = false) {
+  const puzzle = puzzleBank[index];
+  activePuzzle = { ...puzzle, index, isPractice };
+  mode = "puzzle";
+  board = [...puzzle.board];
+  currentTurn = PLAYER_ONE;
+  phase = puzzle.phase;
+  winner = null;
+  winLine = [];
+  selectedNode = puzzle.solutionFrom ?? null;
+  availableMoves = selectedNode === null ? [] : getEmptyNeighbors(selectedNode);
+  totalMoves = 0;
+
+  bodySetMode("puzzle");
+  gameModeText.textContent = isPractice ? "Practice Puzzle" : "Daily Puzzle";
+  message.textContent = puzzle.instruction;
+  rematchBtn.disabled = false;
+  rematchBtn.textContent = "Try Again";
+  rematchBtn.classList.add("hidden");
+  onlineInfo.classList.add("hidden");
+  startTimer();
+  renderBoard();
+  showScreen("gameScreen");
+}
+
+function completePuzzle(success) {
+  stopTimer();
+  const finishedPuzzle = activePuzzle;
+
+  if (success) {
+    const dateKey = new Date().toISOString().slice(0, 10);
+    const progress = loadPuzzleProgress();
+
+    if (!activePuzzle.isPractice) {
+      progress[dateKey] = true;
+      savePuzzleProgress(progress);
+    }
+
+    message.textContent = activePuzzle.isPractice ? "Practice puzzle solved!" : "Daily puzzle solved!";
+    showFireworks();
+    playSound("win");
+  } else {
+    message.textContent = "Not the best move. Click Try Again to reset this puzzle.";
+    playSound("error");
+  }
+
+  activePuzzle = finishedPuzzle;
+  rematchBtn.classList.remove("hidden");
+  rematchBtn.disabled = false;
+  rematchBtn.textContent = "Try Again";
+  updatePuzzleScreen();
+}
+
 function renderBoard() {
   boardNodes.innerHTML = "";
 
@@ -438,48 +528,43 @@ function renderBoard() {
     button.addEventListener("click", () => handleNodeClick(node.id));
     button.addEventListener("pointerdown", () => handlePointerSelect(node.id));
     button.addEventListener("pointerup", () => handlePointerRelease(node.id));
-
     boardNodes.appendChild(button);
   });
 
   playerOneCount.textContent = countStones(PLAYER_ONE);
   playerTwoCount.textContent = countStones(PLAYER_TWO);
-  playerOneLabel.textContent = mode === "pc" || myOnlinePlayer === PLAYER_ONE ? playerName : "Friend";
-  playerTwoLabel.textContent = mode === "pc" ? "PC" : myOnlinePlayer === PLAYER_TWO ? playerName : "Friend";
+  playerOneLabel.textContent = mode === "online" || mode === "random" ? (myOnlinePlayer === PLAYER_ONE ? playerName : "Friend") : playerName;
+  playerTwoLabel.textContent = mode === "online" || mode === "random" ? (myOnlinePlayer === PLAYER_TWO ? playerName : "Friend") : "PC";
   moveCounter.textContent = totalMoves;
   difficultyDisplay.textContent = difficulty[0].toUpperCase() + difficulty.slice(1);
 
-  if (winner) {
-    turnBox.textContent = "Game Over";
-  } else if (mode === "pc") {
-    turnBox.textContent = currentTurn === PLAYER_ONE ? "Your Turn" : "PC Turn";
-  } else {
-    turnBox.textContent = currentTurn === myOnlinePlayer ? "Your Turn" : "Opponent Turn";
-  }
+  if (winner) turnBox.textContent = "Game Over";
+  else if (mode === "online" || mode === "random") turnBox.textContent = currentTurn === myOnlinePlayer ? "Your Turn" : "Opponent Turn";
+  else turnBox.textContent = currentTurn === PLAYER_ONE ? "Your Turn" : "PC Turn";
 }
 
 function canClickNode(nodeId) {
   if (winner) return false;
 
-  if (mode !== "pc") {
+  if (mode === "online" || mode === "random") {
     return currentTurn === myOnlinePlayer;
   }
 
   if (currentTurn !== PLAYER_ONE) return false;
 
-  if (!isMovementPhase()) {
-    return board[nodeId] === null && countStones(PLAYER_ONE) < MAX_STONES;
+  if (mode === "puzzle") {
+    if (phase === "placing") return board[nodeId] === null;
+    if (selectedNode === null) return board[nodeId] === PLAYER_ONE && getEmptyNeighbors(nodeId).length > 0;
+    return nodeId === selectedNode || board[nodeId] === PLAYER_ONE || availableMoves.includes(nodeId);
   }
 
-  if (selectedNode === null) {
-    return board[nodeId] === PLAYER_ONE && getEmptyNeighbors(nodeId).length > 0;
-  }
-
+  if (!isMovementPhase()) return board[nodeId] === null && countStones(PLAYER_ONE) < MAX_STONES;
+  if (selectedNode === null) return board[nodeId] === PLAYER_ONE && getEmptyNeighbors(nodeId).length > 0;
   return nodeId === selectedNode || board[nodeId] === PLAYER_ONE || availableMoves.includes(nodeId);
 }
 
 function handlePointerSelect(nodeId) {
-  if (mode === "pc" && isMovementPhase() && board[nodeId] === PLAYER_ONE) {
+  if ((mode === "pc" || mode === "tournament") && (isMovementPhase() || phase === "moving") && board[nodeId] === PLAYER_ONE) {
     selectedNode = nodeId;
     availableMoves = getEmptyNeighbors(nodeId);
     renderBoard();
@@ -487,22 +572,23 @@ function handlePointerSelect(nodeId) {
 }
 
 function handlePointerRelease(nodeId) {
-  if (mode === "pc" && isMovementPhase() && selectedNode !== null && availableMoves.includes(nodeId)) {
+  if ((mode === "pc" || mode === "tournament") && (isMovementPhase() || phase === "moving") && selectedNode !== null && availableMoves.includes(nodeId)) {
     moveLocalStone(nodeId);
   }
 }
 
 function handleNodeClick(nodeId) {
-  if (mode !== "pc") {
+  if (mode === "online" || mode === "random") {
     socket.emit("online-action", { nodeId });
     return;
   }
 
-  if (isMovementPhase()) {
-    moveLocalStone(nodeId);
-  } else {
-    placeLocalStone(nodeId);
+  if (mode === "puzzle") {
+    phase === "moving" ? moveLocalStone(nodeId) : placeLocalStone(nodeId);
+    return;
   }
+
+  isMovementPhase() ? moveLocalStone(nodeId) : placeLocalStone(nodeId);
 }
 
 function placeLocalStone(nodeId) {
@@ -511,6 +597,12 @@ function placeLocalStone(nodeId) {
   board[nodeId] = PLAYER_ONE;
   totalMoves += 1;
   playSound("place");
+
+  if (mode === "puzzle") {
+    completePuzzle(activePuzzle && nodeId === activePuzzle.solution && Boolean(findWinner(PLAYER_ONE)));
+    renderBoard();
+    return;
+  }
 
   if (finishLocalTurn(PLAYER_ONE)) return;
 
@@ -534,7 +626,6 @@ function moveLocalStone(nodeId) {
   if (nodeId === selectedNode) {
     selectedNode = null;
     availableMoves = [];
-    message.textContent = "Select one of your stones to move.";
     renderBoard();
     return;
   }
@@ -554,6 +645,12 @@ function moveLocalStone(nodeId) {
     totalMoves += 1;
     playSound("move");
 
+    if (mode === "puzzle") {
+      completePuzzle(activePuzzle && nodeId === activePuzzle.solution && Boolean(findWinner(PLAYER_ONE)));
+      renderBoard();
+      return;
+    }
+
     if (finishLocalTurn(PLAYER_ONE)) return;
 
     currentTurn = PLAYER_TWO;
@@ -570,7 +667,10 @@ function finishLocalTurn(player) {
     winner = player;
     winLine = line;
     message.textContent = player === PLAYER_ONE ? `${playerName} wins!` : "PC wins!";
+
     if (mode === "pc") recordMatch(player === PLAYER_ONE ? "win" : "loss", "pc", "PC");
+    if (mode === "tournament") handleTournamentResult(player);
+
     playSound("win");
     stopTimer();
     showFireworks();
@@ -586,7 +686,10 @@ function finishLocalTurn(player) {
     if (getMovableStones(opponent).length === 0) {
       winner = player;
       message.textContent = player === PLAYER_ONE ? `${playerName} wins! PC cannot move.` : "PC wins! You cannot move.";
+
       if (mode === "pc") recordMatch(player === PLAYER_ONE ? "win" : "loss", "pc", "PC");
+      if (mode === "tournament") handleTournamentResult(player);
+
       playSound("win");
       stopTimer();
       showFireworks();
@@ -609,6 +712,7 @@ function handlePcTurn() {
       winner = PLAYER_ONE;
       message.textContent = `${playerName} wins! PC cannot move.`;
       if (mode === "pc") recordMatch("win", "pc", "PC");
+      if (mode === "tournament") handleTournamentResult(PLAYER_ONE);
       stopTimer();
       showFireworks();
       renderBoard();
@@ -634,9 +738,7 @@ function handlePcTurn() {
 }
 
 function choosePcPlacement() {
-  const emptyNodes = board
-    .map((owner, index) => (owner === null ? index : null))
-    .filter((index) => index !== null);
+  const emptyNodes = board.map((owner, index) => owner === null ? index : null).filter((index) => index !== null);
 
   if (difficulty !== "easy") {
     for (const nodeId of emptyNodes) {
@@ -646,7 +748,7 @@ function choosePcPlacement() {
     }
   }
 
-  if (difficulty === "hard" || difficulty === "medium") {
+  if (difficulty === "medium" || difficulty === "hard") {
     for (const nodeId of emptyNodes) {
       const testBoard = [...board];
       testBoard[nodeId] = PLAYER_ONE;
@@ -680,30 +782,10 @@ function choosePcMovement() {
     }
   }
 
-  if (difficulty === "hard" || difficulty === "medium") {
-    for (const userFrom of getMovableStones(PLAYER_ONE)) {
-      for (const userTo of getEmptyNeighbors(userFrom)) {
-        const testBoard = [...board];
-        testBoard[userFrom] = null;
-        testBoard[userTo] = PLAYER_ONE;
-        if (findWinner(PLAYER_ONE, testBoard)) {
-          const blockMove = possibleMoves.find((move) => move.to === userTo);
-          if (blockMove) return blockMove;
-        }
-      }
-    }
-  }
-
-  const centerMove = possibleMoves.find((move) => move.to === 4);
-  if (difficulty === "hard" && centerMove) return centerMove;
-
   return possibleMoves[Math.floor(Math.random() * possibleMoves.length)] || null;
 }
 
-function resetLocalGame() {
-  mode = "pc";
-  myOnlinePlayer = null;
-  currentRoomId = null;
+function resetLocalBoardOnly() {
   board = Array(9).fill(null);
   currentTurn = PLAYER_ONE;
   phase = "placing";
@@ -712,15 +794,22 @@ function resetLocalGame() {
   selectedNode = null;
   availableMoves = [];
   totalMoves = 0;
-
-  gameModeText.textContent = "Play vs PC";
-  playerTwoLabel.textContent = "PC";
   onlineInfo.classList.add("hidden");
+  rematchBtn.textContent = "Rematch";
   rematchBtn.classList.add("hidden");
   message.textContent = "Your turn.";
-
   startTimer();
   renderBoard();
+}
+
+function resetLocalGame() {
+  mode = "pc";
+  bodySetMode("normal");
+  myOnlinePlayer = null;
+  currentRoomId = null;
+  gameModeText.textContent = "Play vs PC";
+  playerTwoLabel.textContent = "PC";
+  resetLocalBoardOnly();
 }
 
 function applyOnlineState(state) {
@@ -741,10 +830,12 @@ function applyOnlineState(state) {
   if (winner) {
     const gameKey = `${currentRoomId}-${winner}-${totalMoves}`;
     message.textContent = winner === myOnlinePlayer ? `${playerName} wins!` : "Opponent wins.";
+
     if (mode !== "pc" && lastRecordedGameKey !== gameKey) {
       lastRecordedGameKey = gameKey;
       recordMatch(winner === myOnlinePlayer ? "win" : "loss", "online", "Friend");
     }
+
     stopTimer();
     showFireworks();
     rematchBtn.classList.remove("hidden");
@@ -755,216 +846,176 @@ function applyOnlineState(state) {
 
   rematchBtn.classList.add("hidden");
   rematchBtn.disabled = false;
-
-  if (currentTurn === myOnlinePlayer) {
-    message.textContent = phase === "moving" ? "Your turn. Move one stone." : "Your turn. Place one stone.";
-  } else {
-    message.textContent = "Waiting for opponent move.";
-  }
-
+  message.textContent = currentTurn === myOnlinePlayer
+    ? phase === "moving" ? "Your turn. Move one stone." : "Your turn. Place one stone."
+    : "Waiting for opponent move.";
   renderBoard();
 }
 
-document.getElementById("continueBtn").addEventListener("click", () => {
+
+function getTournamentNames() {
+  const size = Number(tournamentSizeSelect.value);
+  const names = tournamentNamesInput.value.split("\n").map((name) => name.trim()).filter(Boolean);
+  while (names.length < size) names.push(`Player ${names.length + 1}`);
+  return names.slice(0, size);
+}
+
+function startTournament() {
+  const players = getTournamentNames();
+  tournament = { round: 1, players, matches: [], currentMatchIndex: 0, champion: null };
+  buildTournamentRound();
+  tournamentBracket.classList.remove("hidden");
+  renderTournamentBracket();
+}
+
+function buildTournamentRound() {
+  tournament.matches = [];
+  tournament.currentMatchIndex = 0;
+
+  for (let i = 0; i < tournament.players.length; i += 2) {
+    tournament.matches.push({ player: tournament.players[i], opponent: tournament.players[i + 1] || "BYE", winner: null });
+  }
+}
+
+function renderTournamentBracket() {
+  tournamentRoundTitle.textContent = tournament.champion ? "Champion" : `Round ${tournament.round}`;
+  bracketList.innerHTML = "";
+
+  if (tournament.champion) {
+    tournamentStatus.textContent = `${tournament.champion} is the tournament champion!`;
+    playTournamentMatchBtn.disabled = true;
+    return;
+  }
+
+  tournament.matches.forEach((match) => {
+    const row = document.createElement("div");
+    row.className = "bracket-match";
+    if (match.winner) row.classList.add("bracket-winner");
+    row.innerHTML = `<span>${match.player}</span><span class="bracket-vs">vs</span><span>${match.opponent}${match.winner ? ` → Winner: ${match.winner}` : ""}</span>`;
+    bracketList.appendChild(row);
+  });
+
+  const next = tournament.matches[tournament.currentMatchIndex];
+  tournamentStatus.textContent = next ? `Next match: ${next.player} vs ${next.opponent}` : "Round complete.";
+  playTournamentMatchBtn.disabled = false;
+}
+
+function playNextTournamentMatch() {
+  if (!tournament || tournament.champion) return;
+  const match = tournament.matches[tournament.currentMatchIndex];
+  if (!match) return finishTournamentRound();
+
+  if (match.opponent === "BYE") {
+    match.winner = match.player;
+    tournament.currentMatchIndex += 1;
+    renderTournamentBracket();
+    return;
+  }
+
+  mode = "tournament";
+  bodySetMode("tournament");
+  playerName = match.player;
+  resetLocalBoardOnly();
+  gameModeText.textContent = `Tournament: ${match.player} vs ${match.opponent}`;
+  showScreen("gameScreen");
+}
+
+function handleTournamentResult(winningPlayer) {
+  if (!tournament || mode !== "tournament") return;
+  const match = tournament.matches[tournament.currentMatchIndex];
+  if (!match) return;
+
+  match.winner = winningPlayer === PLAYER_ONE ? match.player : match.opponent;
+  tournament.currentMatchIndex += 1;
+  renderTournamentBracket();
+
+  if (tournament.currentMatchIndex >= tournament.matches.length) finishTournamentRound();
+}
+
+function finishTournamentRound() {
+  const winners = tournament.matches.map((match) => match.winner).filter(Boolean);
+
+  if (winners.length <= 1) {
+    tournament.champion = winners[0] || "No winner";
+    renderTournamentBracket();
+    showScreen("tournamentScreen");
+    showFireworks();
+    return;
+  }
+
+  tournament.players = winners;
+  tournament.round += 1;
+  buildTournamentRound();
+  renderTournamentBracket();
+  showScreen("tournamentScreen");
+}
+
+$("continueBtn").addEventListener("click", () => {
   playerName = playerNameInput.value.trim() || "Player";
   difficulty = difficultySelect.value;
   soundEnabled = soundToggle.checked;
   showScreen("homeScreen");
 });
 
-document.getElementById("playPcBtn").addEventListener("click", () => {
+$("playPcBtn").addEventListener("click", () => {
   difficulty = difficultySelect.value;
   resetLocalGame();
   showScreen("gameScreen");
 });
 
-document.getElementById("playOnlineBtn").addEventListener("click", () => showScreen("onlineMenuScreen"));
-document.getElementById("statsBtn").addEventListener("click", () => {
-  updateStatsUI();
-  showScreen("statsScreen");
-});
-
-document.getElementById("customizeBtn").addEventListener("click", () => {
-  applyCustomization(currentTheme, currentPieces);
-  showScreen("customizeScreen");
-});
-
-themeSelect.addEventListener("change", () => {
-  applyCustomization(themeSelect.value, pieceSelect.value);
-});
-
-pieceSelect.addEventListener("change", () => {
-  applyCustomization(themeSelect.value, pieceSelect.value);
-});
-
-document.getElementById("saveThemeBtn").addEventListener("click", () => {
-  currentTheme = themeSelect.value;
-  currentPieces = pieceSelect.value;
-  applyCustomization(currentTheme, currentPieces);
-  saveCustomization();
-  message.textContent = "Theme saved.";
-});
-
-document.getElementById("resetThemeBtn").addEventListener("click", () => {
-  currentTheme = "classic";
-  currentPieces = "dots";
-  applyCustomization(currentTheme, currentPieces);
-  saveCustomization();
-});
-document.getElementById("resetStatsBtn").addEventListener("click", resetStats);
-document.getElementById("friendModeBtn").addEventListener("click", () => showScreen("friendScreen"));
-
-document.getElementById("randomModeBtn").addEventListener("click", () => {
-  mode = "random";
-  startTimer();
-  randomStatus.textContent = "Searching for an online player...";
-  showScreen("randomScreen");
-  socket.emit("random-match");
-});
-
-document.getElementById("createRoomBtn").addEventListener("click", () => {
-  mode = "online";
-  startTimer();
-  friendStatus.textContent = "Creating room...";
-  socket.emit("create-room");
-});
-
-document.getElementById("joinRoomBtn").addEventListener("click", () => {
-  const roomCode = document.getElementById("joinCodeInput").value.trim().toUpperCase();
-  if (!roomCode) {
-    friendStatus.textContent = "Please enter a room code.";
-    return;
-  }
-
-  mode = "online";
-  startTimer();
-  friendStatus.textContent = "Joining room...";
-  socket.emit("join-room", roomCode);
-});
-
-document.getElementById("copyCodeBtn").addEventListener("click", async () => {
-  if (!currentRoomId) return;
-  await navigator.clipboard.writeText(currentRoomId);
-  friendStatus.textContent = "Room code copied.";
-});
-
-document.getElementById("copyLinkBtn").addEventListener("click", async () => {
-  if (!roomLinkInput.value) return;
-  await navigator.clipboard.writeText(roomLinkInput.value);
-  friendStatus.textContent = "Room link copied.";
-});
-
-document.getElementById("newGameBtn").addEventListener("click", () => {
-  if (mode === "pc") resetLocalGame();
-  else message.textContent = "For online rematch in Phase 1, create a new room.";
-});
-
-rematchBtn.addEventListener("click", () => {
-  if (mode === "pc") {
-    resetLocalGame();
-    return;
-  }
-
-  socket.emit("request-rematch");
-  message.textContent = "Rematch requested. Waiting for opponent...";
-  rematchBtn.disabled = true;
-});
-
-document.getElementById("exitGameBtn").addEventListener("click", () => {
-  stopTimer();
-  showScreen("homeScreen");
-});
-
-document.querySelectorAll(".back-btn[data-screen]").forEach((button) => {
-  button.addEventListener("click", () => showScreen(button.dataset.screen));
-});
+$("playOnlineBtn").addEventListener("click", () => showScreen("onlineMenuScreen"));
+$("dailyPuzzleBtn").addEventListener("click", () => { updatePuzzleScreen(); showScreen("dailyPuzzleScreen"); });
+$("startDailyPuzzleBtn").addEventListener("click", () => { currentPuzzleIndex = getTodayPuzzleIndex(); startPuzzle(currentPuzzleIndex, false); });
+$("nextPracticePuzzleBtn").addEventListener("click", () => { currentPuzzleIndex = (currentPuzzleIndex + 1) % puzzleBank.length; startPuzzle(currentPuzzleIndex, true); });
+$("tournamentBtn").addEventListener("click", () => { tournamentNamesInput.value = `${playerName}\nPlayer 2\nPlayer 3\nPlayer 4`; showScreen("tournamentScreen"); });
+$("startTournamentBtn").addEventListener("click", startTournament);
+playTournamentMatchBtn.addEventListener("click", playNextTournamentMatch);
+$("statsBtn").addEventListener("click", () => { updateStatsUI(); showScreen("statsScreen"); });
+$("resetStatsBtn").addEventListener("click", resetStats);
+$("customizeBtn").addEventListener("click", () => showScreen("customizeScreen"));
+themeSelect.addEventListener("change", () => applyCustomization(themeSelect.value, pieceSelect.value));
+pieceSelect.addEventListener("change", () => applyCustomization(themeSelect.value, pieceSelect.value));
+$("saveThemeBtn").addEventListener("click", saveCustomization);
+$("resetThemeBtn").addEventListener("click", () => { applyCustomization("classic", "dots"); saveCustomization(); });
+$("friendModeBtn").addEventListener("click", () => showScreen("friendScreen"));
+$("randomModeBtn").addEventListener("click", () => { mode = "random"; startTimer(); randomStatus.textContent = "Searching for an online player..."; showScreen("randomScreen"); socket.emit("random-match"); });
+$("createRoomBtn").addEventListener("click", () => { mode = "online"; startTimer(); friendStatus.textContent = "Creating room..."; socket.emit("create-room"); });
+$("joinRoomBtn").addEventListener("click", () => { const roomCode = $("joinCodeInput").value.trim().toUpperCase(); if (roomCode) { mode = "online"; startTimer(); socket.emit("join-room", roomCode); } });
+$("copyCodeBtn").addEventListener("click", async () => { if (currentRoomId) await navigator.clipboard.writeText(currentRoomId); });
+$("copyLinkBtn").addEventListener("click", async () => { if (roomLinkInput.value) await navigator.clipboard.writeText(roomLinkInput.value); });
+$("newGameBtn").addEventListener("click", () => { if (mode === "pc") resetLocalGame(); else if (mode === "puzzle") startPuzzle(activePuzzle ? activePuzzle.index : currentPuzzleIndex, activePuzzle ? activePuzzle.isPractice : true); });
+rematchBtn.addEventListener("click", () => { if (mode === "pc") resetLocalGame(); else if (mode === "puzzle") startPuzzle(activePuzzle ? activePuzzle.index : currentPuzzleIndex, activePuzzle ? activePuzzle.isPractice : true); else if (mode === "tournament") showScreen("tournamentScreen"); else { socket.emit("request-rematch"); message.textContent = "Rematch requested. Waiting for opponent..."; rematchBtn.disabled = true; } });
+$("exitGameBtn").addEventListener("click", () => { stopTimer(); bodySetMode("normal"); showScreen("homeScreen"); });
+document.querySelectorAll(".back-btn[data-screen]").forEach((button) => button.addEventListener("click", () => showScreen(button.dataset.screen)));
 
 socket.on("joined-room", ({ roomId, player, state }) => {
   myOnlinePlayer = player;
   currentRoomId = roomId;
-  selectedNode = null;
-  availableMoves = [];
-
   const roomLink = `${window.location.origin}/room/${roomId}`;
-
   createdRoomBox.classList.remove("hidden");
   roomCodeDisplay.textContent = roomId;
   roomLinkInput.value = roomLink;
   onlineRoomBadge.textContent = `Room: ${roomId}`;
   onlineInfo.classList.remove("hidden");
-  playerTwoLabel.textContent = "Friend";
   connectionBadge.textContent = "🟢 Connected";
   gameModeText.textContent = mode === "random" ? "Random Opponent" : "Play with Friend";
-
   window.history.replaceState({}, "", `/room/${roomId}`);
   showScreen("gameScreen");
   applyOnlineState(state);
 });
 
-socket.on("room-state", (state) => {
-  if (!myOnlinePlayer) return;
-  applyOnlineState(state);
-});
+socket.on("room-state", (state) => { if (myOnlinePlayer) applyOnlineState(state); });
+socket.on("stone-selected", ({ selectedNode: nodeId, availableMoves: moves }) => { selectedNode = nodeId; availableMoves = moves || []; renderBoard(); });
+socket.on("waiting-random", (text) => { randomStatus.textContent = text; });
+socket.on("room-error", (text) => { friendStatus.textContent = text; message.textContent = text; playSound("error"); });
+socket.on("rematch-status", ({ votes, needed }) => { const hasMyVote = votes.includes(myOnlinePlayer); message.textContent = hasMyVote ? `Rematch requested. Waiting for opponent (${votes.length}/${needed}).` : "Opponent wants a rematch. Click Rematch to accept."; rematchBtn.classList.remove("hidden"); rematchBtn.disabled = hasMyVote; });
+socket.on("rematch-started", (state) => { selectedNode = null; availableMoves = []; winner = null; winLine = []; totalMoves = 0; lastRecordedGameKey = null; rematchBtn.disabled = false; rematchBtn.classList.add("hidden"); startTimer(); applyOnlineState(state); });
+socket.on("opponent-left", (text) => { connectionBadge.textContent = "🔴 Disconnected"; message.textContent = text; });
 
-socket.on("stone-selected", ({ selectedNode: nodeId, availableMoves: moves }) => {
-  selectedNode = nodeId;
-  availableMoves = moves || [];
-  renderBoard();
-});
-
-socket.on("waiting-random", (text) => {
-  randomStatus.textContent = text;
-});
-
-socket.on("room-error", (text) => {
-  friendStatus.textContent = text;
-  message.textContent = text;
-  playSound("error");
-});
-
-
-socket.on("rematch-status", ({ requestedBy, votes, needed }) => {
-  const hasMyVote = votes.includes(myOnlinePlayer);
-
-  if (hasMyVote) {
-    message.textContent = `Rematch requested. Waiting for opponent (${votes.length}/${needed}).`;
-    rematchBtn.disabled = true;
-  } else {
-    message.textContent = "Opponent wants a rematch. Click Rematch to accept.";
-    rematchBtn.classList.remove("hidden");
-    rematchBtn.disabled = false;
-  }
-});
-
-socket.on("rematch-started", (state) => {
-  selectedNode = null;
-  availableMoves = [];
-  winner = null;
-  winLine = [];
-  totalMoves = 0;
-  lastRecordedGameKey = null;
-  rematchBtn.disabled = false;
-  rematchBtn.classList.add("hidden");
-  startTimer();
-  message.textContent = "Rematch started.";
-  applyOnlineState(state);
-});
-
-socket.on("opponent-left", (text) => {
-  connectionBadge.textContent = "🔴 Disconnected";
-  message.textContent = text;
-});
+const savedCustomization = loadCustomization();
+applyCustomization(savedCustomization.theme, savedCustomization.pieces);
+updateStatsUI();
+updateTimerDisplay();
 
 const roomMatch = window.location.pathname.match(/^\/room\/([A-Z0-9]+)$/i);
-
-if (roomMatch) {
-  mode = "online";
-  startTimer();
-  socket.emit("join-room", roomMatch[1]);
-} else {
-  updateTimerDisplay();
-}
-
-const initialCustomization = loadCustomization();
-applyCustomization(initialCustomization.theme, initialCustomization.pieces);
-updateStatsUI();
+if (roomMatch) { mode = "online"; startTimer(); socket.emit("join-room", roomMatch[1]); }

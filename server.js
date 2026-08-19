@@ -44,7 +44,7 @@ let waitingSocketId = null;
 
 app.use(express.static(path.join(__dirname, "public")));
 
-app.get("/room/:roomId", (req, res) => {
+app.get("/room/:roomId", (_req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
@@ -214,7 +214,6 @@ function handleOnlineAction(socket, data) {
         availableMoves: getEmptyNeighbors(room.board, nodeId)
       });
     }
-
     return;
   }
 
@@ -239,7 +238,6 @@ function handleOnlineAction(socket, data) {
     room.selected[player] = null;
     room.moveCount += 1;
     room.rematchVotes.clear();
-
     checkGameAfterMove(room, player);
 
     if (!room.winner) {
@@ -265,7 +263,6 @@ function resetRoomForRematch(room) {
 function handleRematchRequest(socket) {
   const room = rooms.get(socket.data.roomId);
   const player = socket.data.player;
-
   if (!room || !player) return;
 
   room.rematchVotes.add(player);
@@ -317,7 +314,6 @@ io.on("connection", (socket) => {
   });
 
   socket.on("online-action", (data) => handleOnlineAction(socket, data || {}));
-
   socket.on("request-rematch", () => handleRematchRequest(socket));
 
   socket.on("disconnect", () => {
@@ -325,19 +321,14 @@ io.on("connection", (socket) => {
 
     const room = rooms.get(socket.data.roomId);
     const player = socket.data.player;
-
     if (!room || !player) return;
 
     delete room.players[socket.id];
     delete room.sockets[player];
-
     socket.to(room.id).emit("opponent-left", "Opponent left the game.");
 
-    if (getPlayerCount(room) === 0) {
-      rooms.delete(room.id);
-    } else {
-      emitRoomState(room);
-    }
+    if (getPlayerCount(room) === 0) rooms.delete(room.id);
+    else emitRoomState(room);
   });
 });
 
