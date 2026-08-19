@@ -62,7 +62,41 @@
         <button id="statsBtn" class="secondary-btn">Stats & History</button>
         <button id="customizeBtn" class="secondary-btn">Themes & Pieces</button>
         <button id="rulesBtn" class="secondary-btn">Rules</button>
+        <button id="accessibilityBtn" class="secondary-btn">Accessibility</button>
         <button id="installBtn" class="primary-btn hidden">Install App</button>
+      </div>
+    </section>
+
+
+
+    <section id="accessibilityScreen" class="screen">
+      <div class="card menu-card">
+        <button class="back-btn" data-screen="homeScreen">← Back</button>
+        <h2>Accessibility</h2>
+        <p>Customize the game display. These options are saved in this browser.</p>
+
+        <label class="toggle-row setting-toggle">
+          <input id="largeNodesToggle" type="checkbox" />
+          <span>Larger board nodes</span>
+        </label>
+
+        <label class="toggle-row setting-toggle">
+          <input id="highContrastToggle" type="checkbox" />
+          <span>High contrast colors</span>
+        </label>
+
+        <label class="toggle-row setting-toggle">
+          <input id="reducedMotionToggle" type="checkbox" />
+          <span>Reduced motion</span>
+        </label>
+
+        <label class="toggle-row setting-toggle">
+          <input id="nodeNumbersToggle" type="checkbox" />
+          <span>Show node numbers</span>
+        </label>
+
+        <button id="saveAccessibilityBtn" class="primary-btn">Save Settings</button>
+        <button id="resetAccessibilityBtn" class="secondary-btn">Reset Settings</button>
       </div>
     </section>
 

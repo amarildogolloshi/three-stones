@@ -136,7 +136,14 @@ const dom = {
   coachPanel: $("coachPanel"),
   coachSummary: $("coachSummary"),
   coachList: $("coachList"),
-  installBtn: $("installBtn")
+  installBtn: $("installBtn"),
+  accessibilityBtn: $("accessibilityBtn"),
+  largeNodesToggle: $("largeNodesToggle"),
+  highContrastToggle: $("highContrastToggle"),
+  reducedMotionToggle: $("reducedMotionToggle"),
+  nodeNumbersToggle: $("nodeNumbersToggle"),
+  saveAccessibilityBtn: $("saveAccessibilityBtn"),
+  resetAccessibilityBtn: $("resetAccessibilityBtn")
 };
 
 let mode = "pc";
@@ -162,6 +169,52 @@ let activePuzzle = null;
 let currentPuzzleIndex = 0;
 let tournament = null;
 let deferredInstallPrompt = null;
+
+
+function loadAccessibilitySettings() {
+  return JSON.parse(localStorage.getItem("threeStonesAccessibilityV28") || "null") || {
+    largeNodes: false,
+    highContrast: false,
+    reducedMotion: false,
+    nodeNumbers: false
+  };
+}
+
+function saveAccessibilitySettings() {
+  const settings = {
+    largeNodes: dom.largeNodesToggle.checked,
+    highContrast: dom.highContrastToggle.checked,
+    reducedMotion: dom.reducedMotionToggle.checked,
+    nodeNumbers: dom.nodeNumbersToggle.checked
+  };
+
+  localStorage.setItem("threeStonesAccessibilityV28", JSON.stringify(settings));
+  applyAccessibilitySettings(settings);
+}
+
+function applyAccessibilitySettings(settings) {
+  document.body.classList.toggle("large-nodes", settings.largeNodes);
+  document.body.classList.toggle("high-contrast", settings.highContrast);
+  document.body.classList.toggle("reduced-motion", settings.reducedMotion);
+  document.body.classList.toggle("show-node-numbers", settings.nodeNumbers);
+
+  dom.largeNodesToggle.checked = settings.largeNodes;
+  dom.highContrastToggle.checked = settings.highContrast;
+  dom.reducedMotionToggle.checked = settings.reducedMotion;
+  dom.nodeNumbersToggle.checked = settings.nodeNumbers;
+}
+
+function resetAccessibilitySettings() {
+  const defaults = {
+    largeNodes: false,
+    highContrast: false,
+    reducedMotion: false,
+    nodeNumbers: false
+  };
+
+  localStorage.setItem("threeStonesAccessibilityV28", JSON.stringify(defaults));
+  applyAccessibilitySettings(defaults);
+}
 
 function showScreen(screenId) {
   dom.screens.forEach((screen) => screen.classList.remove("active"));
@@ -499,6 +552,11 @@ function renderBoard() {
     button.style.left = `${node.x}%`;
     button.style.top = `${node.y}%`;
     button.textContent = getPieceSymbol(owner);
+
+    const nodeNumber = document.createElement("span");
+    nodeNumber.className = "node-number";
+    nodeNumber.textContent = node.id + 1;
+    button.appendChild(nodeNumber);
 
     if (owner === PLAYER_ONE) button.classList.add("player-one");
     if (owner === PLAYER_TWO) button.classList.add("player-two");
@@ -909,6 +967,9 @@ function wireEvents() {
 
   $("playOnlineBtn").addEventListener("click", () => showScreen("onlineMenuScreen"));
   $("rulesBtn").addEventListener("click", () => showScreen("rulesScreen"));
+  dom.accessibilityBtn.addEventListener("click", () => showScreen("accessibilityScreen"));
+  dom.saveAccessibilityBtn.addEventListener("click", saveAccessibilitySettings);
+  dom.resetAccessibilityBtn.addEventListener("click", resetAccessibilitySettings);
   $("dailyPuzzleBtn").addEventListener("click", () => { updatePuzzleScreen(); showScreen("dailyPuzzleScreen"); });
   $("startDailyPuzzleBtn").addEventListener("click", () => { currentPuzzleIndex = todayPuzzleIndex(); startPuzzle(currentPuzzleIndex, false); });
   $("nextPracticePuzzleBtn").addEventListener("click", () => { currentPuzzleIndex = (currentPuzzleIndex + 1) % puzzleBank.length; startPuzzle(currentPuzzleIndex, true); });
@@ -972,6 +1033,9 @@ function wireSocket() {
   socket.on("rematch-status", ({ votes, needed }) => { const voted = votes.includes(myOnlinePlayer); dom.message.textContent = voted ? `Rematch requested. Waiting for opponent (${votes.length}/${needed}).` : "Opponent wants a rematch. Click Rematch to accept."; dom.rematchBtn.classList.remove("hidden"); });
   socket.on("rematch-started", (state) => { selectedNode = null; availableMoves = []; winner = null; winLine = []; totalMoves = 0; dom.rematchBtn.classList.add("hidden"); hideCoach(); startTimer(); applyOnlineState(state); });
 }
+
+const accessibilitySettings = loadAccessibilitySettings();
+applyAccessibilitySettings(accessibilitySettings);
 
 const customization = loadCustomization();
 applyCustomization(customization.theme, customization.pieces);

@@ -69,3 +69,100 @@ body.theme-stone .board-wrap { background: linear-gradient(135deg, #cbd5e1, #647
 body.theme-space .board-wrap { background: linear-gradient(135deg, #111827, #312e81, #020617); border-color: #818cf8; }
 body.theme-space .board-lines line { stroke: #c4b5fd; }
 @media (max-width: 600px) { .stats-row, .score-row, .mini-stats, .stats-grid, .customize-grid { grid-template-columns: 1fr; } .node { width: 50px; height: 50px; font-size: 25px; } }
+
+
+/* v2.8 Accessibility Settings */
+.setting-toggle {
+  justify-content: flex-start;
+  background: #0f172a;
+  border-radius: 14px;
+  padding: 12px;
+  margin: 10px 0;
+}
+
+.setting-toggle input {
+  width: 22px;
+  height: 22px;
+}
+
+body.large-nodes .node {
+  width: 70px;
+  height: 70px;
+  font-size: 34px;
+}
+
+body.high-contrast {
+  background: #000000;
+  color: #ffffff;
+}
+
+body.high-contrast .card,
+body.high-contrast .room-box,
+body.high-contrast .join-box,
+body.high-contrast .online-info,
+body.high-contrast .stats-row,
+body.high-contrast .stats-card,
+body.high-contrast .challenge-card,
+body.high-contrast .bracket-box,
+body.high-contrast .coach-panel {
+  background: #000000;
+  border: 2px solid #ffffff;
+}
+
+body.high-contrast .board-wrap {
+  background: #ffffff;
+  border-color: #000000;
+  box-shadow: none;
+}
+
+body.high-contrast .board-lines line {
+  stroke: #000000;
+}
+
+body.high-contrast .node.player-one,
+body.high-contrast .node.player-one:disabled {
+  background: #003cff !important;
+  border-color: #ffffff !important;
+}
+
+body.high-contrast .node.player-two,
+body.high-contrast .node.player-two:disabled {
+  background: #d00000 !important;
+  border-color: #ffffff !important;
+}
+
+body.reduced-motion *,
+body.reduced-motion *::before,
+body.reduced-motion *::after {
+  animation: none !important;
+  transition: none !important;
+}
+
+.node-number {
+  position: absolute;
+  right: -5px;
+  bottom: -7px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: #facc15;
+  color: #111827;
+  font-size: 12px;
+  font-weight: 900;
+  border: 2px solid #111827;
+}
+
+body.show-node-numbers .node-number {
+  display: flex;
+}
+
+@media (max-width: 600px) {
+  body.large-nodes .node {
+    width: 60px;
+    height: 60px;
+    font-size: 30px;
+  }
+}
