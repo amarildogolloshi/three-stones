@@ -182,3 +182,77 @@ body.tutorial-active .game-card {
   outline: 4px solid #38bdf8;
   outline-offset: 4px;
 }
+
+/* v3.0 Accounts and Leaderboard */
+.account-badge {
+  display: inline-block;
+  margin: 10px 0 14px;
+  padding: 10px 14px;
+  border-radius: 999px;
+  background: #0f172a;
+  color: #facc15;
+  font-weight: 900;
+  border: 2px solid rgba(250, 204, 21, 0.45);
+}
+
+.profile-card {
+  background: #0f172a;
+  border-radius: 18px;
+  padding: 18px;
+  margin: 18px 0;
+}
+
+.profile-avatar {
+  width: 82px;
+  height: 82px;
+  margin: 0 auto 10px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: #1e293b;
+  font-size: 46px;
+  border: 3px solid #facc15;
+}
+
+.leaderboard-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.leaderboard-row {
+  display: grid;
+  grid-template-columns: 44px 1fr auto;
+  gap: 12px;
+  align-items: center;
+  background: #0f172a;
+  border-radius: 14px;
+  padding: 12px;
+  text-align: left;
+}
+
+.leaderboard-rank {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: #facc15;
+  color: #111827;
+  font-weight: 900;
+}
+
+.leaderboard-name {
+  font-weight: 900;
+  color: #ffffff;
+}
+
+.leaderboard-meta {
+  color: #94a3b8;
+  font-size: 13px;
+}
+
+.leaderboard-rating {
+  color: #facc15;
+  font-weight: 900;
+}

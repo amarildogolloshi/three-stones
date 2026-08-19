@@ -137,6 +137,31 @@ const dom = {
   coachSummary: $("coachSummary"),
   coachList: $("coachList"),
   installBtn: $("installBtn"),
+  accountBadge: $("accountBadge"),
+  loginBtn: $("loginBtn"),
+  registerBtn: $("registerBtn"),
+  profileBtn: $("profileBtn"),
+  leaderboardBtn: $("leaderboardBtn"),
+  logoutBtn: $("logoutBtn"),
+  registerUsernameInput: $("registerUsernameInput"),
+  registerPasswordInput: $("registerPasswordInput"),
+  avatarSelect: $("avatarSelect"),
+  createAccountBtn: $("createAccountBtn"),
+  registerStatus: $("registerStatus"),
+  loginUsernameInput: $("loginUsernameInput"),
+  loginPasswordInput: $("loginPasswordInput"),
+  loginAccountBtn: $("loginAccountBtn"),
+  loginStatus: $("loginStatus"),
+  profileAvatar: $("profileAvatar"),
+  profileUsername: $("profileUsername"),
+  profileRank: $("profileRank"),
+  profileGames: $("profileGames"),
+  profileWins: $("profileWins"),
+  profileLosses: $("profileLosses"),
+  profileWinRate: $("profileWinRate"),
+  profileBestTime: $("profileBestTime"),
+  profileFewestMoves: $("profileFewestMoves"),
+  leaderboardList: $("leaderboardList"),
   accessibilityBtn: $("accessibilityBtn"),
   tutorialBtn: $("tutorialBtn"),
   startTutorialBtn: $("startTutorialBtn"),
@@ -172,6 +197,7 @@ let activePuzzle = null;
 let currentPuzzleIndex = 0;
 let tournament = null;
 let deferredInstallPrompt = null;
+let currentAccountId = localStorage.getItem("threeStonesCurrentAccountV30") || null;
 let tutorialActive = false;
 let hintNodeId = null;
 
@@ -360,6 +386,186 @@ function showCoach(winningPlayer) {
   dom.coachPanel.classList.remove("hidden");
 }
 
+
+function loadAccounts() {
+  return JSON.parse(localStorage.getItem("threeStonesAccountsV30") || "[]");
+}
+
+function saveAccounts(accounts) {
+  localStorage.setItem("threeStonesAccountsV30", JSON.stringify(accounts));
+}
+
+function getCurrentAccount() {
+  return loadAccounts().find((account) => account.id === currentAccountId) || null;
+}
+
+function createAccount() {
+  const username = dom.registerUsernameInput.value.trim();
+  const password = dom.registerPasswordInput.value.trim();
+  const avatar = dom.avatarSelect.value;
+
+  if (!username || !password) {
+    dom.registerStatus.textContent = "Enter a username and password.";
+    return;
+  }
+
+  const accounts = loadAccounts();
+  if (accounts.some((account) => account.username.toLowerCase() === username.toLowerCase())) {
+    dom.registerStatus.textContent = "That username already exists.";
+    return;
+  }
+
+  const account = {
+    id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()),
+    username,
+    password,
+    avatar,
+    createdAt: new Date().toISOString(),
+    rating: 1000,
+    games: 0,
+    wins: 0,
+    losses: 0,
+    bestTime: null,
+    fewestMoves: null,
+    history: []
+  };
+
+  accounts.push(account);
+  saveAccounts(accounts);
+  currentAccountId = account.id;
+  localStorage.setItem("threeStonesCurrentAccountV30", currentAccountId);
+  playerName = username;
+  dom.playerNameInput.value = username;
+  dom.registerStatus.textContent = "Account created.";
+  updateAccountUI();
+  showScreen("homeScreen");
+}
+
+function loginAccount() {
+  const username = dom.loginUsernameInput.value.trim();
+  const password = dom.loginPasswordInput.value.trim();
+  const account = loadAccounts().find((item) => item.username.toLowerCase() === username.toLowerCase() && item.password === password);
+
+  if (!account) {
+    dom.loginStatus.textContent = "Username or password is not correct.";
+    return;
+  }
+
+  currentAccountId = account.id;
+  localStorage.setItem("threeStonesCurrentAccountV30", currentAccountId);
+  playerName = account.username;
+  dom.playerNameInput.value = account.username;
+  dom.loginStatus.textContent = "Logged in.";
+  updateAccountUI();
+  showScreen("homeScreen");
+}
+
+function logoutAccount() {
+  currentAccountId = null;
+  localStorage.removeItem("threeStonesCurrentAccountV30");
+  playerName = dom.playerNameInput.value.trim() || "Player";
+  updateAccountUI();
+}
+
+function syncCurrentAccountFromStats() {
+  const account = getCurrentAccount();
+  if (!account) return;
+
+  const stats = loadStats();
+  const accounts = loadAccounts();
+  const index = accounts.findIndex((item) => item.id === account.id);
+  if (index < 0) return;
+
+  accounts[index] = {
+    ...accounts[index],
+    rating: stats.rating,
+    games: stats.games,
+    wins: stats.wins,
+    losses: stats.losses,
+    bestTime: stats.bestTime,
+    fewestMoves: stats.fewestMoves,
+    history: stats.history.slice(0, 20)
+  };
+
+  saveAccounts(accounts);
+  updateAccountUI();
+}
+
+function loadStatsForAccount(account) {
+  if (!account) return;
+
+  saveStats({
+    rating: account.rating || 1000,
+    games: account.games || 0,
+    wins: account.wins || 0,
+    losses: account.losses || 0,
+    bestTime: account.bestTime ?? null,
+    fewestMoves: account.fewestMoves ?? null,
+    history: account.history || []
+  });
+  updateStatsUI();
+}
+
+function updateAccountUI() {
+  const account = getCurrentAccount();
+
+  if (!account) {
+    dom.accountBadge.textContent = "Playing as Guest";
+    dom.loginBtn.classList.remove("hidden");
+    dom.registerBtn.classList.remove("hidden");
+    dom.profileBtn.classList.add("hidden");
+    dom.logoutBtn.classList.add("hidden");
+    return;
+  }
+
+  dom.accountBadge.textContent = `${account.avatar} ${account.username} • ${getRankName(account.rating || 1000)} • ${account.rating || 1000} RP`;
+  dom.loginBtn.classList.add("hidden");
+  dom.registerBtn.classList.add("hidden");
+  dom.profileBtn.classList.remove("hidden");
+  dom.logoutBtn.classList.remove("hidden");
+}
+
+function updateProfileScreen() {
+  const account = getCurrentAccount();
+  if (!account) return;
+
+  const winRate = account.games ? Math.round((account.wins / account.games) * 100) : 0;
+  dom.profileAvatar.textContent = account.avatar;
+  dom.profileUsername.textContent = account.username;
+  dom.profileRank.textContent = `${getRankName(account.rating || 1000)} • ${account.rating || 1000} RP`;
+  dom.profileGames.textContent = account.games || 0;
+  dom.profileWins.textContent = account.wins || 0;
+  dom.profileLosses.textContent = account.losses || 0;
+  dom.profileWinRate.textContent = `${winRate}%`;
+  dom.profileBestTime.textContent = account.bestTime === null || account.bestTime === undefined ? "--:--" : formatTime(account.bestTime);
+  dom.profileFewestMoves.textContent = account.fewestMoves === null || account.fewestMoves === undefined ? "--" : account.fewestMoves;
+}
+
+function updateLeaderboardScreen() {
+  const accounts = loadAccounts().sort((a, b) => (b.rating || 1000) - (a.rating || 1000));
+  dom.leaderboardList.innerHTML = "";
+
+  if (accounts.length === 0) {
+    dom.leaderboardList.innerHTML = '<p class="history-meta">No accounts yet. Register an account to join the leaderboard.</p>';
+    return;
+  }
+
+  accounts.forEach((account, index) => {
+    const row = document.createElement("div");
+    const winRate = account.games ? Math.round((account.wins / account.games) * 100) : 0;
+    row.className = "leaderboard-row";
+    row.innerHTML = `
+      <div class="leaderboard-rank">${index + 1}</div>
+      <div>
+        <div class="leaderboard-name">${account.avatar} ${account.username}</div>
+        <div class="leaderboard-meta">${getRankName(account.rating || 1000)} • ${account.wins || 0} wins • ${winRate}% win rate</div>
+      </div>
+      <div class="leaderboard-rating">${account.rating || 1000} RP</div>
+    `;
+    dom.leaderboardList.appendChild(row);
+  });
+}
+
 function loadStats() {
   return JSON.parse(localStorage.getItem("threeStonesStatsV27") || "null") || {
     rating: 1000,
@@ -410,6 +616,7 @@ function recordMatch(result, gameMode, opponentName) {
   stats.history = stats.history.slice(0, 20);
   saveStats(stats);
   updateStatsUI();
+  syncCurrentAccountFromStats();
 }
 
 function updateStatsUI() {
@@ -1075,6 +1282,14 @@ function wireEvents() {
     showScreen("homeScreen");
   });
 
+  dom.loginBtn.addEventListener("click", () => showScreen("loginScreen"));
+  dom.registerBtn.addEventListener("click", () => showScreen("registerScreen"));
+  dom.createAccountBtn.addEventListener("click", createAccount);
+  dom.loginAccountBtn.addEventListener("click", loginAccount);
+  dom.logoutBtn.addEventListener("click", logoutAccount);
+  dom.profileBtn.addEventListener("click", () => { updateProfileScreen(); showScreen("profileScreen"); });
+  dom.leaderboardBtn.addEventListener("click", () => { updateLeaderboardScreen(); showScreen("leaderboardScreen"); });
+
   $("playPcBtn").addEventListener("click", () => {
     difficulty = dom.difficultySelect.value;
     resetLocalGame();
@@ -1158,6 +1373,13 @@ applyAccessibilitySettings(accessibilitySettings);
 
 const customization = loadCustomization();
 applyCustomization(customization.theme, customization.pieces);
+const activeAccount = getCurrentAccount();
+if (activeAccount) {
+  playerName = activeAccount.username;
+  dom.playerNameInput.value = activeAccount.username;
+  loadStatsForAccount(activeAccount);
+}
+updateAccountUI();
 updateStatsUI();
 updateTimerDisplay();
 wireEvents();

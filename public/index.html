@@ -56,6 +56,14 @@
           </div>
         </section>
 
+        <section id="accountBadge" class="account-badge">Playing as Guest</section>
+
+        <button id="loginBtn" class="secondary-btn">Login</button>
+        <button id="registerBtn" class="secondary-btn">Register</button>
+        <button id="profileBtn" class="secondary-btn hidden">Profile</button>
+        <button id="leaderboardBtn" class="secondary-btn">Leaderboard</button>
+        <button id="logoutBtn" class="secondary-btn hidden">Logout</button>
+
         <button id="playPcBtn" class="primary-btn">Play vs PC</button>
         <button id="playOnlineBtn" class="secondary-btn">Play Online</button>
         <button id="dailyPuzzleBtn" class="secondary-btn">Daily Puzzle</button>
@@ -117,6 +125,81 @@
     </section>
 
 
+
+
+
+    <section id="registerScreen" class="screen">
+      <div class="card menu-card">
+        <button class="back-btn" data-screen="homeScreen">← Back</button>
+        <h2>Create Account</h2>
+        <p>This version saves accounts locally in this browser.</p>
+
+        <label class="field-label" for="registerUsernameInput">Username</label>
+        <input id="registerUsernameInput" maxlength="18" placeholder="Player name" />
+
+        <label class="field-label" for="registerPasswordInput">Password</label>
+        <input id="registerPasswordInput" type="password" maxlength="30" placeholder="Password" />
+
+        <label class="field-label" for="avatarSelect">Avatar</label>
+        <select id="avatarSelect">
+          <option value="🐺">Wolf</option>
+          <option value="🦊">Fox</option>
+          <option value="🐉">Dragon</option>
+          <option value="👑">Crown</option>
+          <option value="💎">Gem</option>
+          <option value="🚀">Rocket</option>
+        </select>
+
+        <button id="createAccountBtn" class="primary-btn">Create Account</button>
+        <p id="registerStatus" class="status-text"></p>
+      </div>
+    </section>
+
+    <section id="loginScreen" class="screen">
+      <div class="card menu-card">
+        <button class="back-btn" data-screen="homeScreen">← Back</button>
+        <h2>Login</h2>
+        <p>Login to load your local profile and leaderboard score.</p>
+
+        <label class="field-label" for="loginUsernameInput">Username</label>
+        <input id="loginUsernameInput" maxlength="18" placeholder="Username" />
+
+        <label class="field-label" for="loginPasswordInput">Password</label>
+        <input id="loginPasswordInput" type="password" maxlength="30" placeholder="Password" />
+
+        <button id="loginAccountBtn" class="primary-btn">Login</button>
+        <p id="loginStatus" class="status-text"></p>
+      </div>
+    </section>
+
+    <section id="profileScreen" class="screen">
+      <div class="card menu-card">
+        <button class="back-btn" data-screen="homeScreen">← Back</button>
+        <h2>Profile</h2>
+        <div class="profile-card">
+          <div id="profileAvatar" class="profile-avatar">🐺</div>
+          <h3 id="profileUsername">Guest</h3>
+          <p id="profileRank">Bronze • 1000 RP</p>
+        </div>
+        <section class="stats-grid">
+          <div><span>Games</span><strong id="profileGames">0</strong></div>
+          <div><span>Wins</span><strong id="profileWins">0</strong></div>
+          <div><span>Losses</span><strong id="profileLosses">0</strong></div>
+          <div><span>Win Rate</span><strong id="profileWinRate">0%</strong></div>
+          <div><span>Best Time</span><strong id="profileBestTime">--:--</strong></div>
+          <div><span>Fewest Moves</span><strong id="profileFewestMoves">--</strong></div>
+        </section>
+      </div>
+    </section>
+
+    <section id="leaderboardScreen" class="screen">
+      <div class="card menu-card">
+        <button class="back-btn" data-screen="homeScreen">← Back</button>
+        <h2>Leaderboard</h2>
+        <p>Local leaderboard for accounts saved in this browser.</p>
+        <div id="leaderboardList" class="leaderboard-list"></div>
+      </div>
+    </section>
 
     <section id="tutorialScreen" class="screen">
       <div class="card menu-card">
