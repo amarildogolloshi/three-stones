@@ -377,3 +377,332 @@ button:disabled {
     font-size: 25px;
   }
 }
+
+/* Phase 3: Ranking, stats, and match history */
+.stats-card {
+  margin: 18px auto;
+  padding: 16px;
+  max-width: 460px;
+  background: #1e293b;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.stats-card h3 {
+  margin: 0 0 10px;
+  color: #facc15;
+}
+
+.rank-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+  font-size: 18px;
+  font-weight: 900;
+}
+
+#rankTitle,
+#detailRankTitle {
+  color: #facc15;
+}
+
+.mini-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  color: #e2e8f0;
+  font-size: 14px;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin: 18px 0;
+}
+
+.stats-grid div {
+  background: #1e293b;
+  border-radius: 16px;
+  padding: 14px;
+  min-height: 82px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+}
+
+.stats-grid span {
+  color: #94a3b8;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.stats-grid strong {
+  color: #ffffff;
+  font-size: 20px;
+}
+
+.history-list {
+  display: grid;
+  gap: 10px;
+  max-height: 300px;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.history-item {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 10px;
+  background: #1e293b;
+  border-radius: 14px;
+  padding: 12px;
+  color: #e2e8f0;
+  text-align: left;
+}
+
+.history-result {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-weight: 900;
+}
+
+.history-result.win {
+  background: #16a34a;
+}
+
+.history-result.loss {
+  background: #dc2626;
+}
+
+.history-result.draw {
+  background: #64748b;
+}
+
+.history-meta {
+  color: #94a3b8;
+  font-size: 13px;
+}
+
+.history-rp {
+  color: #facc15;
+  font-weight: 900;
+}
+
+.danger-btn {
+  background: #7f1d1d !important;
+  color: #ffffff !important;
+}
+
+@media (max-width: 600px) {
+  .mini-stats,
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .history-item {
+    grid-template-columns: auto 1fr;
+  }
+
+  .history-rp {
+    grid-column: 1 / -1;
+  }
+}
+
+/* Phase 4: Themes and piece sets */
+.customize-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin: 18px 0;
+  text-align: left;
+  color: #cbd5e1;
+  font-weight: 900;
+}
+
+.customize-grid label {
+  display: grid;
+  gap: 8px;
+}
+
+.theme-preview {
+  display: flex;
+  justify-content: center;
+  margin: 18px 0;
+}
+
+.preview-board {
+  position: relative;
+  width: 190px;
+  height: 190px;
+  border-radius: 20px;
+  background: #f7f0df;
+  border: 6px solid #111827;
+  box-shadow: inset 0 0 0 4px #d6b574;
+}
+
+.preview-line {
+  position: absolute;
+  background: #111827;
+  border-radius: 999px;
+}
+
+.preview-line.horizontal {
+  left: 25px;
+  right: 25px;
+  top: 93px;
+  height: 5px;
+}
+
+.preview-line.vertical {
+  top: 25px;
+  bottom: 25px;
+  left: 93px;
+  width: 5px;
+}
+
+.preview-piece {
+  position: absolute;
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  font-weight: 900;
+  color: #ffffff;
+  border: 4px solid rgba(0, 0, 0, 0.55);
+}
+
+.preview-player-one {
+  left: 38px;
+  top: 68px;
+  background: #0047b8;
+}
+
+.preview-player-two {
+  right: 38px;
+  top: 68px;
+  background: #b00000;
+}
+
+body.theme-classic .board-wrap,
+body.theme-classic .preview-board {
+  background: #f7f0df;
+  border-color: #111827;
+  box-shadow: inset 0 0 0 5px #d6b574, 0 18px 38px rgba(0, 0, 0, 0.42);
+}
+
+body.theme-classic .board-lines line,
+body.theme-classic .preview-line {
+  stroke: #111827;
+  background: #111827;
+}
+
+body.theme-dark .board-wrap,
+body.theme-dark .preview-board {
+  background: #020617;
+  border-color: #94a3b8;
+  box-shadow: inset 0 0 0 5px #1e293b, 0 18px 38px rgba(0, 0, 0, 0.55);
+}
+
+body.theme-dark .board-lines line,
+body.theme-dark .preview-line {
+  stroke: #e2e8f0;
+  background: #e2e8f0;
+}
+
+body.theme-wood .board-wrap,
+body.theme-wood .preview-board {
+  background: linear-gradient(135deg, #d89b56, #9b5b29, #6b3518);
+  border-color: #3b1f0f;
+  box-shadow: inset 0 0 0 5px rgba(255, 255, 255, 0.18), 0 18px 38px rgba(0, 0, 0, 0.48);
+}
+
+body.theme-wood .board-lines line,
+body.theme-wood .preview-line {
+  stroke: #2a150b;
+  background: #2a150b;
+}
+
+body.theme-neon .board-wrap,
+body.theme-neon .preview-board {
+  background: radial-gradient(circle, #111827, #020617);
+  border-color: #22d3ee;
+  box-shadow: 0 0 28px rgba(34, 211, 238, 0.58), inset 0 0 0 5px #0f172a;
+}
+
+body.theme-neon .board-lines line,
+body.theme-neon .preview-line {
+  stroke: #22d3ee;
+  background: #22d3ee;
+  filter: drop-shadow(0 0 6px #22d3ee);
+}
+
+body.theme-stone .board-wrap,
+body.theme-stone .preview-board {
+  background: linear-gradient(135deg, #cbd5e1, #64748b, #334155);
+  border-color: #1e293b;
+  box-shadow: inset 0 0 0 5px rgba(255, 255, 255, 0.28), 0 18px 38px rgba(0, 0, 0, 0.45);
+}
+
+body.theme-stone .board-lines line,
+body.theme-stone .preview-line {
+  stroke: #0f172a;
+  background: #0f172a;
+}
+
+body.theme-space .board-wrap,
+body.theme-space .preview-board {
+  background:
+    radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.75) 0 2px, transparent 3px),
+    radial-gradient(circle at 80% 35%, rgba(255, 255, 255, 0.55) 0 2px, transparent 3px),
+    radial-gradient(circle at 45% 70%, rgba(255, 255, 255, 0.45) 0 2px, transparent 3px),
+    linear-gradient(135deg, #111827, #312e81, #020617);
+  border-color: #818cf8;
+  box-shadow: 0 0 28px rgba(129, 140, 248, 0.5), inset 0 0 0 5px rgba(255, 255, 255, 0.1);
+}
+
+body.theme-space .board-lines line,
+body.theme-space .preview-line {
+  stroke: #c4b5fd;
+  background: #c4b5fd;
+  filter: drop-shadow(0 0 6px #818cf8);
+}
+
+body.pieces-stars .node.player-one,
+body.pieces-stars .node.player-two,
+body.pieces-gems .node.player-one,
+body.pieces-gems .node.player-two,
+body.pieces-shields .node.player-one,
+body.pieces-shields .node.player-two,
+body.pieces-animals .node.player-one,
+body.pieces-animals .node.player-two {
+  font-size: 27px;
+}
+
+body.theme-neon .node.player-one,
+body.theme-neon .preview-player-one {
+  background: #00a3ff !important;
+  box-shadow: 0 0 18px rgba(0, 163, 255, 0.85) !important;
+}
+
+body.theme-neon .node.player-two,
+body.theme-neon .preview-player-two {
+  background: #ff007a !important;
+  box-shadow: 0 0 18px rgba(255, 0, 122, 0.85) !important;
+}
+
+@media (max-width: 600px) {
+  .customize-grid {
+    grid-template-columns: 1fr;
+  }
+}
