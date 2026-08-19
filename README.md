@@ -1,30 +1,14 @@
-# Three Stones v3.0.1 Menu Reorganization Regular Format
+# Three Stones v3.0.6 Screen Branding
 
-This version is the same v3.0.1 menu reorganization, but rebuilt with regular readable file formatting.
+This version adds the Three Stones logo dot and title to every screen/section.
 
-## Added in v3.0.1
+## Added in v3.0.6
 
-- Cleaner home menu layout
-- Account panel at the top
-- Play section
-- Progress section
-- Learn section
-- Settings section
-- Mobile-friendly menu grid
-- No intentional changes to the core game rules
-
-## Included
-
-- Local accounts
-- Profile screen
-- Local leaderboard
-- Play vs PC
-- Play Online
-- Daily Puzzle
-- Tournament mode
-- Tutorial and Hint button
-- Themes and Accessibility settings
-- PWA manifest and service worker
+- Adds the logo dot to each page/card.
+- Adds the `Three Stones` title to each page/card.
+- Keeps the reorganized menu layout.
+- Keeps the v3.0.5 wiring fixes.
+- Keeps the Codespaces-safe behavior.
 
 ## Run
 
@@ -38,3 +22,5 @@ Then open:
 ```text
 http://localhost:3000
 ```
+
+If old files are cached, clear site data and hard refresh with Ctrl + Shift + R.

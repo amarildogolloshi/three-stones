@@ -1,4 +1,4 @@
-const CACHE_NAME = "three-stones-v3-0-1-cache";
+const CACHE_NAME = "three-stones-v3-0-2-static-safe-cache";
 const APP_SHELL = [
   "/",
   "/index.html",

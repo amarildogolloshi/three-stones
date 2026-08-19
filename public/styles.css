@@ -489,3 +489,21 @@ body.tutorial-active .game-card {
     font-size: 30px;
   }
 }
+
+/* v3.0.6 Screen Branding */
+.brand-header {
+  text-align: center;
+  margin-bottom: 12px;
+}
+
+.brand-header .brand-logo-dot {
+  margin-bottom: 10px;
+}
+
+.brand-header h1 {
+  margin: 6px 0 10px;
+}
+
+.game-header h1 {
+  display: none;
+}

@@ -1,4 +1,12 @@
-const socket = io();
+const ONLINE_AVAILABLE = typeof window.io === "function";
+const socket = ONLINE_AVAILABLE
+  ? window.io()
+  : {
+      on() {},
+      emit() {
+        console.warn("Online mode requires the Node.js server.");
+      },
+    };
 const P1 = "player1";
 const P2 = "player2";
 const MAX = 3;
@@ -103,6 +111,29 @@ let elapsed = 0,
   hintNode = null;
 const d = {};
 [
+  "continueBtn",
+  "playPcBtn",
+  "playOnlineBtn",
+  "dailyPuzzleBtn",
+  "tournamentBtn",
+  "statsBtn",
+  "rulesBtn",
+  "customizeBtn",
+  "friendModeBtn",
+  "randomModeBtn",
+  "createRoomBtn",
+  "joinRoomBtn",
+  "joinCodeInput",
+  "copyCodeBtn",
+  "copyLinkBtn",
+  "newGameBtn",
+  "exitGameBtn",
+  "startDailyPuzzleBtn",
+  "nextPracticePuzzleBtn",
+  "startTournamentBtn",
+  "saveThemeBtn",
+  "resetThemeBtn",
+  "resetStatsBtn",
   "boardNodes",
   "message",
   "turnBox",
@@ -195,6 +226,49 @@ const d = {};
 ].forEach((id) => (d[id] = $(id)));
 let currentAccountId =
   localStorage.getItem("threeStonesCurrentAccountV301") || null;
+
+function setText(element, value) {
+  if (element) element.textContent = value;
+}
+
+function setHtml(element, value) {
+  if (element) element.innerHTML = value;
+}
+
+function addBrandingToAllCards() {
+  document.querySelectorAll(".screen .card").forEach((card) => {
+    if (card.querySelector(":scope > .brand-header")) return;
+
+    const brand = document.createElement("div");
+    brand.className = "brand-header";
+    brand.innerHTML =
+      '<div class="logo-dot brand-logo-dot">●</div><h1>Three Stones</h1>';
+
+    const existingLogo = card.querySelector(":scope > .logo-dot");
+    const existingTitle = card.querySelector(":scope > h1");
+
+    if (existingLogo) existingLogo.remove();
+    if (existingTitle) existingTitle.remove();
+
+    card.insertBefore(brand, card.firstChild);
+  });
+}
+
+function showOnlineRequiredMessage() {
+  setText(
+    d.friendStatus,
+    "Online mode requires the Node.js server. Run npm start and open http://localhost:3000.",
+  );
+  setText(d.message, "Online mode requires the Node.js server.");
+}
+
+function updateStaticSafeUi() {
+  if (ONLINE_AVAILABLE) return;
+  setText(d.playOnlineBtn, "Play Online (Server Required)");
+  if (d.randomModeBtn) d.randomModeBtn.disabled = true;
+  if (d.createRoomBtn) d.createRoomBtn.disabled = true;
+  if (d.joinRoomBtn) d.joinRoomBtn.disabled = true;
+}
 
 function showScreen(id) {
   document
@@ -512,37 +586,41 @@ function record(result, kind, opp) {
   syncAccount();
 }
 function updateStatsUI() {
-  const s = loadStats(),
-    wr = s.games ? Math.round((s.wins / s.games) * 100) : 0;
-  d.rankTitle.textContent = rankName(s.rating);
-  d.rankPoints.textContent = `${s.rating} RP`;
-  d.statGames.textContent = s.games;
-  d.statWins.textContent = s.wins;
-  d.statWinRate.textContent = `${wr}%`;
-  d.detailRankTitle.textContent = rankName(s.rating);
-  d.detailRankPoints.textContent = s.rating;
-  d.detailGames.textContent = s.games;
-  d.detailWins.textContent = s.wins;
-  d.detailLosses.textContent = s.losses;
-  d.detailWinRate.textContent = `${wr}%`;
-  d.detailBestTime.textContent = s.bestTime == null ? "--:--" : fmt(s.bestTime);
-  d.detailFewestMoves.textContent =
-    s.fewestMoves == null ? "--" : s.fewestMoves;
+  const s = loadStats();
+  const wr = s.games ? Math.round((s.wins / s.games) * 100) : 0;
+
+  setText(d.rankTitle, rankName(s.rating));
+  setText(d.rankPoints, `${s.rating} RP`);
+  setText(d.statGames, s.games);
+  setText(d.statWins, s.wins);
+  setText(d.statWinRate, `${wr}%`);
+  setText(d.detailRankTitle, rankName(s.rating));
+  setText(d.detailRankPoints, s.rating);
+  setText(d.detailGames, s.games);
+  setText(d.detailWins, s.wins);
+  setText(d.detailLosses, s.losses);
+  setText(d.detailWinRate, `${wr}%`);
+  setText(d.detailBestTime, s.bestTime == null ? "--:--" : fmt(s.bestTime));
+  setText(d.detailFewestMoves, s.fewestMoves == null ? "--" : s.fewestMoves);
+
+  if (!d.matchHistoryList) return;
   d.matchHistoryList.innerHTML = "";
   if (!s.history.length) {
     d.matchHistoryList.innerHTML =
       '<p class="history-meta">No matches yet.</p>';
     return;
   }
+
   s.history.forEach((m) => {
     const item = document.createElement("div");
     item.className = "history-item";
-    const label = m.result === "win" ? "W" : "L",
-      rp = m.ratingChange > 0 ? `+${m.ratingChange}` : m.ratingChange;
+    const label = m.result === "win" ? "W" : "L";
+    const rp = m.ratingChange > 0 ? `+${m.ratingChange}` : m.ratingChange;
     item.innerHTML = `<div class="history-result ${m.result}">${label}</div><div><strong>${m.mode} vs ${m.opponent}</strong><div class="history-meta">${m.date} • ${m.moves} moves • ${fmt(m.seconds)}</div></div><div class="history-rp">${rp} RP</div>`;
     d.matchHistoryList.appendChild(item);
   });
 }
+
 function resetStats() {
   saveStats(defaultStats());
   updateStatsUI();
@@ -1046,14 +1124,11 @@ function applyTheme() {
   render();
 }
 function registerPwa() {
-  if ("serviceWorker" in navigator)
-    navigator.serviceWorker.register("/service-worker.js").catch(() => {});
-  window.addEventListener("beforeinstallprompt", (e) => {
-    e.preventDefault();
-    deferredInstall = e;
-    d.installBtn.classList.remove("hidden");
-  });
+  // Disabled in v3.0.3 Codespaces-safe build.
+  // This prevents private Codespaces port redirects from breaking manifest/service worker loading.
+  if (d.installBtn) d.installBtn.classList.add("hidden");
 }
+
 function wire() {
   d.continueBtn?.addEventListener("click", () => {
     playerName = d.playerNameInput.value.trim() || "Player";
@@ -1073,7 +1148,14 @@ function wire() {
     resetGame();
     showScreen("gameScreen");
   };
-  d.playOnlineBtn.onclick = () => showScreen("onlineMenuScreen");
+  d.playOnlineBtn.onclick = () => {
+    if (!ONLINE_AVAILABLE) {
+      showOnlineRequiredMessage();
+      showScreen("homeScreen");
+      return;
+    }
+    showScreen("onlineMenuScreen");
+  };
   d.dailyPuzzleBtn.onclick = () => {
     updatePuzzle();
     showScreen("dailyPuzzleScreen");
@@ -1155,17 +1237,29 @@ function wire() {
   };
   d.friendModeBtn.onclick = () => showScreen("friendScreen");
   d.randomModeBtn.onclick = () => {
+    if (!ONLINE_AVAILABLE) {
+      showOnlineRequiredMessage();
+      return;
+    }
     mode = "random";
     startClock();
     showScreen("randomScreen");
     socket.emit("random-match");
   };
   d.createRoomBtn.onclick = () => {
+    if (!ONLINE_AVAILABLE) {
+      showOnlineRequiredMessage();
+      return;
+    }
     mode = "online";
     startClock();
     socket.emit("create-room");
   };
   d.joinRoomBtn.onclick = () => {
+    if (!ONLINE_AVAILABLE) {
+      showOnlineRequiredMessage();
+      return;
+    }
     const code = d.joinCodeInput.value.trim().toUpperCase();
     if (code) {
       mode = "online";
@@ -1254,6 +1348,7 @@ if (savedTheme) {
 }
 applyAccess();
 applyTheme();
+addBrandingToAllCards();
 const acc = currentAccount();
 if (acc) {
   playerName = acc.username;
@@ -1264,11 +1359,16 @@ updateAccountUI();
 updateStatsUI();
 updateClock();
 wire();
+updateStaticSafeUi();
 wireSocket();
 registerPwa();
 const match = location.pathname.match(/^\/room\/([A-Z0-9]+)$/i);
 if (match) {
-  mode = "online";
-  startClock();
-  socket.emit("join-room", match[1]);
+  if (ONLINE_AVAILABLE) {
+    mode = "online";
+    startClock();
+    socket.emit("join-room", match[1]);
+  } else {
+    showOnlineRequiredMessage();
+  }
 }
