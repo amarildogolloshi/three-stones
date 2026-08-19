@@ -1,27 +1,27 @@
-# Three Stones v2.8 Accessibility Settings
+# Three Stones v2.9 Expert AI and Tutorial
 
-This version adds a safe accessibility and settings phase on top of v2.7.
+This version adds a safe learning-focused phase on top of v2.8.
 
-## Added in v2.8
+## Added in v2.9
 
-- Accessibility Settings screen
-- Larger board nodes option
-- High contrast mode
-- Reduced motion mode
-- Show node numbers option
-- Saved settings using `localStorage`
-- Safe UI-only changes without touching core game logic
+- Expert AI difficulty option
+- Tutorial screen
+- Guided tutorial game button
+- Hint button during local games and puzzles
+- Safer move suggestions for placement and movement phase
+- Tutorial tips in the AI Coach area
 
 ## Previous features still included
 
 - PWA support
+- Accessibility settings
 - Rules screen
-- Install app support
-- PC game mode
-- Online game mode
+- Play vs PC
+- Online game modes
 - Daily Puzzle
 - Tournament mode
-- Stats and themes
+- Stats and ranking panel
+- Themes and pieces
 - AI Coach panel
 
 ## Run

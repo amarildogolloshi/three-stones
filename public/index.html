@@ -25,6 +25,7 @@
           <option value="easy">Easy</option>
           <option value="medium" selected>Medium</option>
           <option value="hard">Hard</option>
+          <option value="expert">Expert</option>
         </select>
 
         <label class="toggle-row">
@@ -59,6 +60,7 @@
         <button id="playOnlineBtn" class="secondary-btn">Play Online</button>
         <button id="dailyPuzzleBtn" class="secondary-btn">Daily Puzzle</button>
         <button id="tournamentBtn" class="secondary-btn">Tournament</button>
+        <button id="tutorialBtn" class="secondary-btn">Tutorial</button>
         <button id="statsBtn" class="secondary-btn">Stats & History</button>
         <button id="customizeBtn" class="secondary-btn">Themes & Pieces</button>
         <button id="rulesBtn" class="secondary-btn">Rules</button>
@@ -111,6 +113,25 @@
           <li>The first player to make 3 stones in a straight line wins.</li>
           <li>The center node connects to every other node.</li>
         </ol>
+      </div>
+    </section>
+
+
+
+    <section id="tutorialScreen" class="screen">
+      <div class="card menu-card">
+        <button class="back-btn" data-screen="homeScreen">← Back</button>
+        <h2>Tutorial</h2>
+        <p>Learn the most important Three Stones strategies before playing.</p>
+
+        <ol class="rules-list tutorial-list">
+          <li><strong>Control the center:</strong> the center connects to every node, so it creates more movement options.</li>
+          <li><strong>Watch for two in a row:</strong> if your opponent has two stones in a line, block the third spot.</li>
+          <li><strong>Make threats:</strong> place or move stones to create a line where you can win next turn.</li>
+          <li><strong>Move with purpose:</strong> during movement phase, do not move a stone away from an important block unless you have a better threat.</li>
+        </ol>
+
+        <button id="startTutorialBtn" class="primary-btn">Start Guided Game</button>
       </div>
     </section>
 
@@ -288,6 +309,7 @@
           <ul id="coachList"></ul>
         </section>
         <div class="game-actions">
+          <button id="hintBtn" class="secondary-btn">Hint</button>
           <button id="rematchBtn" class="primary-btn hidden">Rematch</button>
           <button id="newGameBtn" class="reset-btn">New Game</button>
         </div>

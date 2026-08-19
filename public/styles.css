@@ -166,3 +166,19 @@ body.show-node-numbers .node-number {
     font-size: 30px;
   }
 }
+
+
+/* v2.9 Expert AI and Tutorial */
+.tutorial-list li {
+  margin: 12px 0;
+}
+
+.hint-highlight {
+  outline: 6px solid rgba(250, 204, 21, 0.9) !important;
+  outline-offset: 5px;
+}
+
+body.tutorial-active .game-card {
+  outline: 4px solid #38bdf8;
+  outline-offset: 4px;
+}

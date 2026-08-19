@@ -138,6 +138,9 @@ const dom = {
   coachList: $("coachList"),
   installBtn: $("installBtn"),
   accessibilityBtn: $("accessibilityBtn"),
+  tutorialBtn: $("tutorialBtn"),
+  startTutorialBtn: $("startTutorialBtn"),
+  hintBtn: $("hintBtn"),
   largeNodesToggle: $("largeNodesToggle"),
   highContrastToggle: $("highContrastToggle"),
   reducedMotionToggle: $("reducedMotionToggle"),
@@ -169,6 +172,8 @@ let activePuzzle = null;
 let currentPuzzleIndex = 0;
 let tournament = null;
 let deferredInstallPrompt = null;
+let tutorialActive = false;
+let hintNodeId = null;
 
 
 function loadAccessibilitySettings() {
@@ -222,9 +227,10 @@ function showScreen(screenId) {
 }
 
 function setModeClass(name) {
-  document.body.classList.remove("puzzle-active", "tournament-active");
+  document.body.classList.remove("puzzle-active", "tournament-active", "tutorial-active");
   if (name === "puzzle") document.body.classList.add("puzzle-active");
   if (name === "tournament") document.body.classList.add("tournament-active");
+  if (name === "tutorial") document.body.classList.add("tutorial-active");
 }
 
 function countStones(player) {
@@ -542,6 +548,92 @@ function completePuzzle(success) {
   updatePuzzleScreen();
 }
 
+
+function getWinningPlacement(player) {
+  const emptyNodes = board
+    .map((owner, nodeId) => owner === null ? nodeId : null)
+    .filter((nodeId) => nodeId !== null);
+
+  for (const nodeId of emptyNodes) {
+    const testBoard = [...board];
+    testBoard[nodeId] = player;
+    if (findWinner(player, testBoard)) return nodeId;
+  }
+
+  return null;
+}
+
+function getWinningMovement(player, sourceBoard = board) {
+  for (const from of getMovableStones(player, sourceBoard)) {
+    for (const to of getEmptyNeighbors(from, sourceBoard)) {
+      const testBoard = [...sourceBoard];
+      testBoard[from] = null;
+      testBoard[to] = player;
+      if (findWinner(player, testBoard)) return { from, to };
+    }
+  }
+
+  return null;
+}
+
+function getBestHint() {
+  if (mode === "online" || mode === "random") return null;
+
+  if (mode === "puzzle" && activePuzzle) {
+    return {
+      text: activePuzzle.phase === "moving"
+        ? `Move to node ${activePuzzle.solution + 1}.`
+        : `Place on node ${activePuzzle.solution + 1}.`,
+      nodeId: activePuzzle.solution
+    };
+  }
+
+  if (!isMovementPhase()) {
+    const winningPlacement = getWinningPlacement(PLAYER_ONE);
+    if (winningPlacement !== null) return { text: `You can win by placing on node ${winningPlacement + 1}.`, nodeId: winningPlacement };
+
+    const blockPlacement = getWinningPlacement(PLAYER_TWO);
+    if (blockPlacement !== null) return { text: `Block PC by placing on node ${blockPlacement + 1}.`, nodeId: blockPlacement };
+
+    if (board[4] === null) return { text: "Good move: take the center node 5.", nodeId: 4 };
+
+    const emptyNode = board.findIndex((owner) => owner === null);
+    return emptyNode >= 0 ? { text: `Safe move: place on node ${emptyNode + 1}.`, nodeId: emptyNode } : null;
+  }
+
+  const winningMove = getWinningMovement(PLAYER_ONE);
+  if (winningMove) return { text: `Winning move: move from node ${winningMove.from + 1} to node ${winningMove.to + 1}.`, nodeId: winningMove.to };
+
+  const blockMove = getWinningMovement(PLAYER_TWO);
+  if (blockMove) return { text: `Block PC by moving to node ${blockMove.to + 1}.`, nodeId: blockMove.to };
+
+  return { text: "Try moving a stone toward the center or keep blocking PC threats.", nodeId: null };
+}
+
+function showHint() {
+  const hint = getBestHint();
+  if (!hint) {
+    dom.message.textContent = "No hint is available right now.";
+    return;
+  }
+
+  hintNodeId = hint.nodeId;
+  dom.message.textContent = `Hint: ${hint.text}`;
+  renderBoard();
+}
+
+function startTutorialGame() {
+  difficulty = "easy";
+  dom.difficultySelect.value = "easy";
+  resetLocalGame();
+  tutorialActive = true;
+  mode = "tutorial";
+  setModeClass("tutorial");
+  dom.gameModeText.textContent = "Tutorial Game";
+  dom.message.textContent = "Tutorial: try to take the center or block two-in-a-row threats.";
+  showScreen("gameScreen");
+}
+
 function renderBoard() {
   dom.boardNodes.innerHTML = "";
 
@@ -563,6 +655,7 @@ function renderBoard() {
     if (selectedNode === node.id) button.classList.add("selected");
     if (availableMoves.includes(node.id)) button.classList.add("available");
     if (winLine.includes(node.id)) button.classList.add("winning");
+    if (hintNodeId === node.id) button.classList.add("hint-highlight");
 
     button.disabled = !canClickNode(node.id);
     button.addEventListener("click", () => handleNodeClick(node.id));
@@ -614,6 +707,7 @@ function handlePointerRelease(nodeId) {
 }
 
 function handleNodeClick(nodeId) {
+  hintNodeId = null;
   if (mode === "online" || mode === "random") {
     socket.emit("online-action", { nodeId });
     return;
@@ -746,22 +840,22 @@ function choosePcPlacement() {
   const emptyNodes = board.map((owner, index) => owner === null ? index : null).filter((index) => index !== null);
 
   if (difficulty !== "easy") {
-    for (const nodeId of emptyNodes) {
-      const testBoard = [...board];
-      testBoard[nodeId] = PLAYER_TWO;
-      if (findWinner(PLAYER_TWO, testBoard)) return nodeId;
-    }
+    const win = getWinningPlacement(PLAYER_TWO);
+    if (win !== null) return win;
   }
 
-  if (difficulty === "medium" || difficulty === "hard") {
-    for (const nodeId of emptyNodes) {
-      const testBoard = [...board];
-      testBoard[nodeId] = PLAYER_ONE;
-      if (findWinner(PLAYER_ONE, testBoard)) return nodeId;
-    }
+  if (["medium", "hard", "expert"].includes(difficulty)) {
+    const block = getWinningPlacement(PLAYER_ONE);
+    if (block !== null) return block;
   }
 
-  if (difficulty === "hard" && board[4] === null) return 4;
+  if (["hard", "expert"].includes(difficulty) && board[4] === null) return 4;
+
+  if (difficulty === "expert") {
+    const corners = [0, 2, 6, 8].filter((nodeId) => board[nodeId] === null);
+    if (corners.length > 0) return corners[Math.floor(Math.random() * corners.length)];
+  }
+
   return emptyNodes[Math.floor(Math.random() * emptyNodes.length)];
 }
 
@@ -774,18 +868,39 @@ function choosePcMovement() {
   }
 
   if (difficulty !== "easy") {
-    for (const move of possibleMoves) {
+    const win = getWinningMovement(PLAYER_TWO);
+    if (win) return win;
+  }
+
+  if (["medium", "hard", "expert"].includes(difficulty)) {
+    const block = getWinningMovement(PLAYER_ONE);
+    if (block) {
+      const directBlock = possibleMoves.find((move) => move.to === block.to);
+      if (directBlock) return directBlock;
+    }
+  }
+
+  if (["hard", "expert"].includes(difficulty)) {
+    const centerMove = possibleMoves.find((move) => move.to === 4);
+    if (centerMove) return centerMove;
+  }
+
+  if (difficulty === "expert") {
+    const safeMoves = possibleMoves.filter((move) => {
       const testBoard = [...board];
       testBoard[move.from] = null;
       testBoard[move.to] = PLAYER_TWO;
-      if (findWinner(PLAYER_TWO, testBoard)) return move;
-    }
+      return !getWinningMovement(PLAYER_ONE, testBoard);
+    });
+
+    if (safeMoves.length > 0) return safeMoves[Math.floor(Math.random() * safeMoves.length)];
   }
 
   return possibleMoves[Math.floor(Math.random() * possibleMoves.length)] || null;
 }
 
 function resetLocalBoardOnly() {
+  hintNodeId = null;
   board = Array(9).fill(null);
   currentTurn = PLAYER_ONE;
   phase = "placing";
@@ -804,6 +919,7 @@ function resetLocalBoardOnly() {
 }
 
 function resetLocalGame() {
+  tutorialActive = false;
   mode = "pc";
   setModeClass("normal");
   myOnlinePlayer = null;
@@ -974,6 +1090,9 @@ function wireEvents() {
   $("startDailyPuzzleBtn").addEventListener("click", () => { currentPuzzleIndex = todayPuzzleIndex(); startPuzzle(currentPuzzleIndex, false); });
   $("nextPracticePuzzleBtn").addEventListener("click", () => { currentPuzzleIndex = (currentPuzzleIndex + 1) % puzzleBank.length; startPuzzle(currentPuzzleIndex, true); });
   $("tournamentBtn").addEventListener("click", () => { dom.tournamentNamesInput.value = `${playerName}\nPlayer 2\nPlayer 3\nPlayer 4`; showScreen("tournamentScreen"); });
+  dom.tutorialBtn.addEventListener("click", () => showScreen("tutorialScreen"));
+  dom.startTutorialBtn.addEventListener("click", startTutorialGame);
+  dom.hintBtn.addEventListener("click", showHint);
   $("startTournamentBtn").addEventListener("click", startTournament);
   dom.playTournamentMatchBtn.addEventListener("click", playNextTournamentMatch);
   $("statsBtn").addEventListener("click", () => { updateStatsUI(); showScreen("statsScreen"); });
