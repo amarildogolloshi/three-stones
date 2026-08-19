@@ -507,3 +507,68 @@ body.tutorial-active .game-card {
 .game-header h1 {
   display: none;
 }
+
+/* v3.1 Achievements and Rewards */
+.achievement-list,
+.reward-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.achievement-row,
+.reward-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 12px;
+  align-items: center;
+  background: #0f172a;
+  border-radius: 14px;
+  padding: 12px;
+  text-align: left;
+}
+
+.achievement-icon,
+.reward-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: #1e293b;
+  font-size: 24px;
+  border: 2px solid #facc15;
+}
+
+.achievement-title,
+.reward-title {
+  color: #ffffff;
+  font-weight: 900;
+}
+
+.achievement-desc,
+.reward-desc {
+  color: #94a3b8;
+  font-size: 13px;
+  margin-top: 3px;
+}
+
+.achievement-locked {
+  opacity: 0.55;
+}
+
+.reward-summary {
+  background: #0f172a;
+  border-radius: 18px;
+  padding: 14px;
+  margin: 14px 0;
+}
+
+.reward-cost {
+  color: #facc15;
+  font-weight: 900;
+}
+
+.reward-row button {
+  min-width: 100px;
+}

@@ -194,6 +194,14 @@ const d = {};
   "registerBtn",
   "profileBtn",
   "leaderboardBtn",
+  "achievementsBtn",
+  "rewardsBtn",
+  "coinsBadge",
+  "achievementsList",
+  "rewardsCoinsValue",
+  "claimDailyRewardBtn",
+  "dailyRewardStatus",
+  "rewardThemeList",
   "logoutBtn",
   "registerUsernameInput",
   "registerPasswordInput",
@@ -233,6 +241,10 @@ function setText(element, value) {
 
 function setHtml(element, value) {
   if (element) element.innerHTML = value;
+}
+
+function safeOn(element, eventName, handler) {
+  if (element) element.addEventListener(eventName, handler);
 }
 
 function addBrandingToAllCards() {
@@ -417,6 +429,222 @@ function defaultStats() {
     history: [],
   };
 }
+
+const ACHIEVEMENTS = [
+  {
+    id: "firstWin",
+    icon: "🏆",
+    title: "First Victory",
+    desc: "Win your first game.",
+  },
+  { id: "fiveWins", icon: "🥈", title: "Five Wins", desc: "Win 5 games." },
+  { id: "tenGames", icon: "🎮", title: "Ten Games", desc: "Play 10 games." },
+  {
+    id: "firstPuzzle",
+    icon: "🧩",
+    title: "Puzzle Solver",
+    desc: "Solve your first puzzle.",
+  },
+  {
+    id: "threePuzzles",
+    icon: "⭐",
+    title: "Puzzle Streak",
+    desc: "Solve 3 puzzles.",
+  },
+  {
+    id: "coinCollector",
+    icon: "💰",
+    title: "Coin Collector",
+    desc: "Collect 250 coins.",
+  },
+];
+
+const THEME_REWARDS = [
+  { id: "classic", name: "Classic", icon: "●", cost: 0 },
+  { id: "dark", name: "Dark", icon: "🌙", cost: 0 },
+  { id: "wood", name: "Wood", icon: "🪵", cost: 100 },
+  { id: "stone", name: "Stone", icon: "🪨", cost: 150 },
+  { id: "neon", name: "Neon", icon: "✨", cost: 250 },
+  { id: "space", name: "Space", icon: "🚀", cost: 300 },
+];
+
+function rewardKey() {
+  return `threeStonesRewardsV31_${currentAccountId || "guest"}`;
+}
+
+function defaultRewards() {
+  return {
+    coins: 0,
+    achievements: [],
+    unlockedThemes: ["classic", "dark"],
+    puzzlesSolved: 0,
+    dailyRewardDate: null,
+    dailyStreak: 0,
+  };
+}
+
+function loadRewards() {
+  const saved =
+    JSON.parse(localStorage.getItem(rewardKey()) || "null") || defaultRewards();
+  saved.achievements ||= [];
+  saved.unlockedThemes ||= ["classic", "dark"];
+  saved.coins ||= 0;
+  saved.puzzlesSolved ||= 0;
+  saved.dailyStreak ||= 0;
+  return saved;
+}
+
+function saveRewards(rewards) {
+  localStorage.setItem(rewardKey(), JSON.stringify(rewards));
+}
+
+function isThemeUnlocked(themeId) {
+  return loadRewards().unlockedThemes.includes(themeId);
+}
+
+function unlockAchievement(id) {
+  const rewards = loadRewards();
+  if (rewards.achievements.includes(id)) return;
+  rewards.achievements.push(id);
+  rewards.coins += 25;
+  saveRewards(rewards);
+  updateRewardBadges();
+}
+
+function awardCoins(amount) {
+  const rewards = loadRewards();
+  rewards.coins += amount;
+  saveRewards(rewards);
+  evaluateAchievements();
+  updateRewardBadges();
+}
+
+function evaluateAchievements() {
+  const stats = loadStats();
+  const rewards = loadRewards();
+  if (stats.wins >= 1) unlockAchievement("firstWin");
+  if (stats.wins >= 5) unlockAchievement("fiveWins");
+  if (stats.games >= 10) unlockAchievement("tenGames");
+  if (rewards.puzzlesSolved >= 1) unlockAchievement("firstPuzzle");
+  if (rewards.puzzlesSolved >= 3) unlockAchievement("threePuzzles");
+  if (rewards.coins >= 250) unlockAchievement("coinCollector");
+}
+
+function updateRewardBadges() {
+  const rewards = loadRewards();
+  setText(d.coinsBadge, `Coins: ${rewards.coins}`);
+  setText(d.rewardsCoinsValue, `Coins: ${rewards.coins}`);
+  updateThemeOptions();
+}
+
+function showAchievements() {
+  const rewards = loadRewards();
+  updateRewardBadges();
+  d.achievementsList.innerHTML = "";
+  ACHIEVEMENTS.forEach((achievement) => {
+    const unlocked = rewards.achievements.includes(achievement.id);
+    const row = document.createElement("div");
+    row.className = `achievement-row ${unlocked ? "" : "achievement-locked"}`;
+    row.innerHTML = `<div class="achievement-icon">${unlocked ? achievement.icon : "🔒"}</div><div><div class="achievement-title">${achievement.title}</div><div class="achievement-desc">${achievement.desc}</div></div><div class="reward-cost">${unlocked ? "Unlocked" : "Locked"}</div>`;
+    d.achievementsList.appendChild(row);
+  });
+  showScreen("achievementsScreen");
+}
+
+function showRewardsStore() {
+  updateRewardBadges();
+  renderRewardsStore();
+  showScreen("rewardsScreen");
+}
+
+function renderRewardsStore() {
+  const rewards = loadRewards();
+  d.rewardThemeList.innerHTML = "";
+  THEME_REWARDS.forEach((themeReward) => {
+    const unlocked = rewards.unlockedThemes.includes(themeReward.id);
+    const row = document.createElement("div");
+    row.className = "reward-row";
+    const buttonText = unlocked ? "Owned" : `Unlock`;
+    row.innerHTML = `<div class="reward-icon">${themeReward.icon}</div><div><div class="reward-title">${themeReward.name} Theme</div><div class="reward-desc">${unlocked ? "Already unlocked" : `Cost: ${themeReward.cost} coins`}</div></div><button class="secondary-btn" data-theme-unlock="${themeReward.id}" ${unlocked ? "disabled" : ""}>${buttonText}</button>`;
+    d.rewardThemeList.appendChild(row);
+  });
+
+  d.rewardThemeList
+    .querySelectorAll("[data-theme-unlock]")
+    .forEach((button) => {
+      button.addEventListener("click", () =>
+        unlockTheme(button.dataset.themeUnlock),
+      );
+    });
+}
+
+function unlockTheme(themeId) {
+  const rewards = loadRewards();
+  const item = THEME_REWARDS.find((themeReward) => themeReward.id === themeId);
+  if (!item || rewards.unlockedThemes.includes(themeId)) return;
+
+  if (rewards.coins < item.cost) {
+    setText(
+      d.dailyRewardStatus,
+      `You need ${item.cost - rewards.coins} more coins to unlock ${item.name}.`,
+    );
+    return;
+  }
+
+  rewards.coins -= item.cost;
+  rewards.unlockedThemes.push(themeId);
+  saveRewards(rewards);
+  setText(d.dailyRewardStatus, `${item.name} theme unlocked!`);
+  updateRewardBadges();
+  renderRewardsStore();
+}
+
+function claimDailyReward() {
+  const rewards = loadRewards();
+  const today = new Date().toISOString().slice(0, 10);
+  if (rewards.dailyRewardDate === today) {
+    setText(d.dailyRewardStatus, "Daily reward already claimed today.");
+    return;
+  }
+
+  rewards.dailyRewardDate = today;
+  rewards.dailyStreak += 1;
+  const bonus = rewards.dailyStreak % 7 === 0 ? 100 : 25;
+  rewards.coins += bonus;
+  saveRewards(rewards);
+  setText(
+    d.dailyRewardStatus,
+    `Claimed ${bonus} coins! Daily streak: ${rewards.dailyStreak}.`,
+  );
+  evaluateAchievements();
+  updateRewardBadges();
+  renderRewardsStore();
+}
+
+function addPuzzleReward() {
+  const rewards = loadRewards();
+  rewards.puzzlesSolved += 1;
+  rewards.coins += activePuzzle?.isPractice ? 10 : 25;
+  saveRewards(rewards);
+  evaluateAchievements();
+  updateRewardBadges();
+}
+
+function updateThemeOptions() {
+  if (!d.themeSelect) return;
+  const rewards = loadRewards();
+  Array.from(d.themeSelect.options).forEach((option) => {
+    const item = THEME_REWARDS.find(
+      (themeReward) => themeReward.id === option.value,
+    );
+    if (!item) return;
+    const unlocked = rewards.unlockedThemes.includes(item.id);
+    option.disabled = !unlocked;
+    option.textContent =
+      unlocked || item.cost === 0 ? item.name : `${item.name} 🔒 ${item.cost}`;
+  });
+}
+
 function loadStats() {
   return (
     JSON.parse(localStorage.getItem("threeStonesStatsV301") || "null") ||
@@ -584,6 +812,7 @@ function record(result, kind, opp) {
   saveStats(s);
   updateStatsUI();
   syncAccount();
+  awardCoins(result === "win" ? (kind === "online" ? 30 : 20) : 5);
 }
 function updateStatsUI() {
   const s = loadStats();
@@ -957,6 +1186,7 @@ function completePuzzle(ok) {
       : "Daily puzzle solved!";
     fire();
     ping("win");
+    addPuzzleReward();
     coach(P1);
   } else {
     d.message.textContent =
@@ -1107,6 +1337,11 @@ function saveAccess() {
   applyAccess();
 }
 function applyTheme() {
+  if (!isThemeUnlocked(theme)) {
+    setText(d.message, "This theme is locked. Unlock it in the Rewards Store.");
+    theme = "classic";
+    if (d.themeSelect) d.themeSelect.value = theme;
+  }
   document.body.classList.remove(
     "theme-classic",
     "theme-dark",
@@ -1143,6 +1378,9 @@ function wire() {
   d.logoutBtn.onclick = logoutAccount;
   d.profileBtn.onclick = profile;
   d.leaderboardBtn.onclick = leaderboard;
+  safeOn(d.achievementsBtn, "click", showAchievements);
+  safeOn(d.rewardsBtn, "click", showRewardsStore);
+  safeOn(d.claimDailyRewardBtn, "click", claimDailyReward);
   d.playPcBtn.onclick = () => {
     difficulty = d.difficultySelect.value;
     resetGame();
@@ -1349,6 +1587,7 @@ if (savedTheme) {
 applyAccess();
 applyTheme();
 addBrandingToAllCards();
+updateRewardBadges();
 const acc = currentAccount();
 if (acc) {
   playerName = acc.username;
@@ -1356,6 +1595,7 @@ if (acc) {
   loadAccountStats(acc);
 }
 updateAccountUI();
+updateRewardBadges();
 updateStatsUI();
 updateClock();
 wire();

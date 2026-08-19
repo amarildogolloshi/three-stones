@@ -193,6 +193,36 @@
           <div id="leaderboardList" class="leaderboard-list"></div>
         </div>
       </section>
+
+      <section id="achievementsScreen" class="screen">
+        <div class="card menu-card">
+          <button class="back-btn" data-screen="homeScreen">← Back</button>
+          <h2>Achievements</h2>
+          <p id="coinsBadge" class="account-badge">Coins: 0</p>
+          <div id="achievementsList" class="achievement-list"></div>
+        </div>
+      </section>
+
+      <section id="rewardsScreen" class="screen">
+        <div class="card menu-card">
+          <button class="back-btn" data-screen="homeScreen">← Back</button>
+          <h2>Rewards Store</h2>
+          <p>
+            Earn coins by playing games and solving puzzles. Use coins to unlock
+            themes.
+          </p>
+          <section class="reward-summary">
+            <strong id="rewardsCoinsValue">Coins: 0</strong>
+            <button id="claimDailyRewardBtn" class="primary-btn">
+              Claim Daily Reward
+            </button>
+            <p id="dailyRewardStatus" class="status-text"></p>
+          </section>
+          <h3>Unlockable Themes</h3>
+          <div id="rewardThemeList" class="reward-list"></div>
+        </div>
+      </section>
+
       <section id="rulesScreen" class="screen">
         <div class="card menu-card">
           <button class="back-btn" data-screen="homeScreen">← Back</button>
