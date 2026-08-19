@@ -38,8 +38,49 @@
         <div class="logo-dot">●</div>
         <h1>Three Stones</h1>
         <p>Place 3 stones, then move them across connected nodes. First player to make 3 in a line wins.</p>
+        <section class="stats-card" id="homeStatsCard">
+          <h3>Your Ranking</h3>
+          <div class="rank-line">
+            <span id="rankTitle">Bronze</span>
+            <strong id="rankPoints">1000 RP</strong>
+          </div>
+          <div class="mini-stats">
+            <span>Games: <strong id="statGames">0</strong></span>
+            <span>Wins: <strong id="statWins">0</strong></span>
+            <span>Win Rate: <strong id="statWinRate">0%</strong></span>
+          </div>
+        </section>
+
         <button id="playPcBtn" class="primary-btn">Play vs PC</button>
         <button id="playOnlineBtn" class="secondary-btn">Play Online</button>
+        <button id="statsBtn" class="secondary-btn">Stats & History</button>
+      </div>
+    </section>
+
+
+
+    <section id="statsScreen" class="screen">
+      <div class="card menu-card">
+        <button class="back-btn" data-screen="homeScreen">← Back</button>
+        <h2>Stats & History</h2>
+        <p>Your stats are saved in this browser.</p>
+
+        <section class="stats-grid">
+          <div><span>Rank</span><strong id="detailRankTitle">Bronze</strong></div>
+          <div><span>Ranking Points</span><strong id="detailRankPoints">1000</strong></div>
+          <div><span>Games Played</span><strong id="detailGames">0</strong></div>
+          <div><span>Wins</span><strong id="detailWins">0</strong></div>
+          <div><span>Losses</span><strong id="detailLosses">0</strong></div>
+          <div><span>Draws</span><strong id="detailDraws">0</strong></div>
+          <div><span>Win Rate</span><strong id="detailWinRate">0%</strong></div>
+          <div><span>Best Time</span><strong id="detailBestTime">--:--</strong></div>
+          <div><span>Fewest Moves</span><strong id="detailFewestMoves">--</strong></div>
+        </section>
+
+        <h3>Recent Matches</h3>
+        <div id="matchHistoryList" class="history-list"></div>
+
+        <button id="resetStatsBtn" class="secondary-btn danger-btn">Reset Stats</button>
       </div>
     </section>
 

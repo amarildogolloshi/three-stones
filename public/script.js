@@ -64,6 +64,21 @@ const timerDisplay = document.getElementById("timerDisplay");
 const difficultyDisplay = document.getElementById("difficultyDisplay");
 const rematchBtn = document.getElementById("rematchBtn");
 const fireworks = document.getElementById("fireworks");
+const rankTitle = document.getElementById("rankTitle");
+const rankPoints = document.getElementById("rankPoints");
+const statGames = document.getElementById("statGames");
+const statWins = document.getElementById("statWins");
+const statWinRate = document.getElementById("statWinRate");
+const detailRankTitle = document.getElementById("detailRankTitle");
+const detailRankPoints = document.getElementById("detailRankPoints");
+const detailGames = document.getElementById("detailGames");
+const detailWins = document.getElementById("detailWins");
+const detailLosses = document.getElementById("detailLosses");
+const detailDraws = document.getElementById("detailDraws");
+const detailWinRate = document.getElementById("detailWinRate");
+const detailBestTime = document.getElementById("detailBestTime");
+const detailFewestMoves = document.getElementById("detailFewestMoves");
+const matchHistoryList = document.getElementById("matchHistoryList");
 
 let mode = "pc";
 let playerName = "Player";
@@ -82,6 +97,147 @@ let totalMoves = 0;
 let elapsedSeconds = 0;
 let timerId = null;
 let audioContext = null;
+let lastRecordedGameKey = null;
+
+const STATS_KEY = "threeStonesStatsV23";
+
+
+function createDefaultStats() {
+  return {
+    rating: 1000,
+    games: 0,
+    wins: 0,
+    losses: 0,
+    draws: 0,
+    bestTime: null,
+    fewestMoves: null,
+    history: []
+  };
+}
+
+function loadStats() {
+  try {
+    return JSON.parse(localStorage.getItem(STATS_KEY)) || createDefaultStats();
+  } catch {
+    return createDefaultStats();
+  }
+}
+
+function saveStats(stats) {
+  localStorage.setItem(STATS_KEY, JSON.stringify(stats));
+}
+
+function getRankName(rating) {
+  if (rating >= 1800) return "Diamond";
+  if (rating >= 1600) return "Platinum";
+  if (rating >= 1400) return "Gold";
+  if (rating >= 1200) return "Silver";
+  return "Bronze";
+}
+
+function formatTime(totalSeconds) {
+  if (totalSeconds === null || totalSeconds === undefined) return "--:--";
+  const minutes = String(Math.floor(totalSeconds / 60)).padStart(2, "0");
+  const seconds = String(totalSeconds % 60).padStart(2, "0");
+  return `${minutes}:${seconds}`;
+}
+
+function calculateRatingChange(result, gameMode) {
+  const base = gameMode === "pc" ? 18 : 26;
+  if (result === "win") return base;
+  if (result === "loss") return -base;
+  return 4;
+}
+
+function recordMatch(result, gameMode, opponentName) {
+  const stats = loadStats();
+  const ratingChange = calculateRatingChange(result, gameMode);
+
+  stats.games += 1;
+  if (result === "win") stats.wins += 1;
+  if (result === "loss") stats.losses += 1;
+  if (result === "draw") stats.draws += 1;
+
+  stats.rating = Math.max(100, stats.rating + ratingChange);
+
+  if (result === "win") {
+    if (stats.bestTime === null || elapsedSeconds < stats.bestTime) {
+      stats.bestTime = elapsedSeconds;
+    }
+
+    if (stats.fewestMoves === null || totalMoves < stats.fewestMoves) {
+      stats.fewestMoves = totalMoves;
+    }
+  }
+
+  stats.history.unshift({
+    id: Date.now(),
+    result,
+    mode: gameMode,
+    opponent: opponentName,
+    moves: totalMoves,
+    seconds: elapsedSeconds,
+    ratingChange,
+    date: new Date().toLocaleString()
+  });
+
+  stats.history = stats.history.slice(0, 20);
+  saveStats(stats);
+  updateStatsUI();
+}
+
+function updateStatsUI() {
+  const stats = loadStats();
+  const rank = getRankName(stats.rating);
+  const winRate = stats.games ? Math.round((stats.wins / stats.games) * 100) : 0;
+
+  rankTitle.textContent = rank;
+  rankPoints.textContent = `${stats.rating} RP`;
+  statGames.textContent = stats.games;
+  statWins.textContent = stats.wins;
+  statWinRate.textContent = `${winRate}%`;
+
+  detailRankTitle.textContent = rank;
+  detailRankPoints.textContent = stats.rating;
+  detailGames.textContent = stats.games;
+  detailWins.textContent = stats.wins;
+  detailLosses.textContent = stats.losses;
+  detailDraws.textContent = stats.draws;
+  detailWinRate.textContent = `${winRate}%`;
+  detailBestTime.textContent = formatTime(stats.bestTime);
+  detailFewestMoves.textContent = stats.fewestMoves === null ? "--" : stats.fewestMoves;
+
+  matchHistoryList.innerHTML = "";
+
+  if (stats.history.length === 0) {
+    matchHistoryList.innerHTML = '<p class="history-meta">No matches yet. Play a game to start your history.</p>';
+    return;
+  }
+
+  stats.history.forEach((match) => {
+    const item = document.createElement("div");
+    item.className = "history-item";
+
+    const symbol = match.result === "win" ? "W" : match.result === "loss" ? "L" : "D";
+    const ratingText = match.ratingChange > 0 ? `+${match.ratingChange}` : String(match.ratingChange);
+
+    item.innerHTML = `
+      <div class="history-result ${match.result}">${symbol}</div>
+      <div>
+        <strong>${match.mode === "pc" ? "vs PC" : "Online"} ${match.opponent ? `vs ${match.opponent}` : ""}</strong>
+        <div class="history-meta">${match.date} • ${match.moves} moves • ${formatTime(match.seconds)}</div>
+      </div>
+      <div class="history-rp">${ratingText} RP</div>
+    `;
+
+    matchHistoryList.appendChild(item);
+  });
+}
+
+function resetStats() {
+  saveStats(createDefaultStats());
+  updateStatsUI();
+}
 
 function showScreen(screenId) {
   screens.forEach((screen) => screen.classList.remove("active"));
@@ -339,6 +495,7 @@ function finishLocalTurn(player) {
     winner = player;
     winLine = line;
     message.textContent = player === PLAYER_ONE ? `${playerName} wins!` : "PC wins!";
+    if (mode === "pc") recordMatch(player === PLAYER_ONE ? "win" : "loss", "pc", "PC");
     playSound("win");
     stopTimer();
     showFireworks();
@@ -354,6 +511,7 @@ function finishLocalTurn(player) {
     if (getMovableStones(opponent).length === 0) {
       winner = player;
       message.textContent = player === PLAYER_ONE ? `${playerName} wins! PC cannot move.` : "PC wins! You cannot move.";
+      if (mode === "pc") recordMatch(player === PLAYER_ONE ? "win" : "loss", "pc", "PC");
       playSound("win");
       stopTimer();
       showFireworks();
@@ -375,6 +533,7 @@ function handlePcTurn() {
     if (!move) {
       winner = PLAYER_ONE;
       message.textContent = `${playerName} wins! PC cannot move.`;
+      if (mode === "pc") recordMatch("win", "pc", "PC");
       stopTimer();
       showFireworks();
       renderBoard();
@@ -505,7 +664,12 @@ function applyOnlineState(state) {
   }
 
   if (winner) {
+    const gameKey = `${currentRoomId}-${winner}-${totalMoves}`;
     message.textContent = winner === myOnlinePlayer ? `${playerName} wins!` : "Opponent wins.";
+    if (mode !== "pc" && lastRecordedGameKey !== gameKey) {
+      lastRecordedGameKey = gameKey;
+      recordMatch(winner === myOnlinePlayer ? "win" : "loss", "online", "Friend");
+    }
     stopTimer();
     showFireworks();
     rematchBtn.classList.remove("hidden");
@@ -540,6 +704,11 @@ document.getElementById("playPcBtn").addEventListener("click", () => {
 });
 
 document.getElementById("playOnlineBtn").addEventListener("click", () => showScreen("onlineMenuScreen"));
+document.getElementById("statsBtn").addEventListener("click", () => {
+  updateStatsUI();
+  showScreen("statsScreen");
+});
+document.getElementById("resetStatsBtn").addEventListener("click", resetStats);
 document.getElementById("friendModeBtn").addEventListener("click", () => showScreen("friendScreen"));
 
 document.getElementById("randomModeBtn").addEventListener("click", () => {
@@ -670,6 +839,7 @@ socket.on("rematch-started", (state) => {
   winner = null;
   winLine = [];
   totalMoves = 0;
+  lastRecordedGameKey = null;
   rematchBtn.disabled = false;
   rematchBtn.classList.add("hidden");
   startTimer();
@@ -691,3 +861,5 @@ if (roomMatch) {
 } else {
   updateTimerDisplay();
 }
+
+updateStatsUI();
