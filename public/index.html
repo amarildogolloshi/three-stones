@@ -89,6 +89,9 @@
             <h2>Learn</h2>
             <div class="menu-grid compact-grid">
               <button id="tutorialBtn" class="secondary-btn">Tutorial</button>
+              <button id="puzzlePacksBtn" class="secondary-btn">
+                Puzzle Packs
+              </button>
               <button id="rulesBtn" class="secondary-btn">Rules</button>
             </div>
           </section>
@@ -238,6 +241,20 @@
           </ol>
         </div>
       </section>
+
+      <section id="puzzlePacksScreen" class="screen">
+        <div class="card menu-card">
+          <button class="back-btn" data-screen="homeScreen">← Back</button>
+          <h2>Puzzle Packs</h2>
+          <p>
+            Choose a pack and solve puzzles by difficulty. Completing a pack
+            gives bonus coins.
+          </p>
+          <div id="puzzlePackList" class="puzzle-pack-list"></div>
+          <p id="puzzlePackStatus" class="status-text"></p>
+        </div>
+      </section>
+
       <section id="tutorialScreen" class="screen">
         <div class="card menu-card">
           <button class="back-btn" data-screen="homeScreen">← Back</button>

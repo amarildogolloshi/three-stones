@@ -1,21 +1,19 @@
-# Three Stones v3.1 Achievements and Rewards
+# Three Stones v3.2.6 Puzzle Pack Fix Original
 
-This version adds a replay-focused reward system on top of v3.0.6.
+This build is based on the original `three-stones-v3.2-puzzle-packs` files you provided.
 
-## Added in v3.1
+## Changed
 
-- Achievements screen
-- Coins currency
-- Daily reward claim
-- Unlockable themes
-- Rewards store screen
-- Coins earned from wins, losses, and solved puzzles
-- Account-aware rewards using localStorage
-- Guest rewards also supported
-
-## Notes
-
-This is still a local/browser storage version. It does not require a database. A future version can sync achievements and coins to Supabase/Firebase.
+- Fixed Puzzle Pack flow:
+  - Wrong move -> Try Again resets the same puzzle.
+  - Correct move -> Next Puzzle.
+  - Last puzzle -> Back to Pack List.
+  - Menu inside a Puzzle Pack game -> Puzzle Pack list.
+  - New Game button hidden inside Puzzle Packs.
+- Fixed puzzle board locking after success or failure.
+- Prevented placing more than 3 player stones in puzzle mode.
+- Preserved the original full `server.js` online room logic.
+- Kept the original service worker active, only renamed the cache to v3.2.6.
 
 ## Run
 
@@ -24,10 +22,8 @@ npm install
 npm start
 ```
 
-Open:
+Then open:
 
 ```text
 http://localhost:3000
 ```
-
-If older files are cached, clear site data and hard refresh with Ctrl + Shift + R.

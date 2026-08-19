@@ -1,4 +1,4 @@
-const CACHE_NAME = "three-stones-v3-0-2-static-safe-cache";
+const CACHE_NAME = "three-stones-v3-2-6-puzzle-pack-fix-cache";
 const APP_SHELL = [
   "/",
   "/index.html",

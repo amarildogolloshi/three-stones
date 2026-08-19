@@ -572,3 +572,48 @@ body.tutorial-active .game-card {
 .reward-row button {
   min-width: 100px;
 }
+
+/* v3.2 Puzzle Packs */
+.puzzle-pack-list {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.puzzle-pack-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 12px;
+  align-items: center;
+  background: #0f172a;
+  border-radius: 14px;
+  padding: 14px;
+  text-align: left;
+}
+
+.puzzle-pack-icon {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: #1e293b;
+  font-size: 24px;
+  border: 2px solid #facc15;
+}
+
+.puzzle-pack-title {
+  color: #ffffff;
+  font-weight: 900;
+}
+
+.puzzle-pack-meta {
+  color: #94a3b8;
+  font-size: 13px;
+  margin-top: 4px;
+}
+
+.puzzle-pack-progress {
+  color: #facc15;
+  font-weight: 900;
+}

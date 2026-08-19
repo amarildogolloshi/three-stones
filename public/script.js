@@ -84,7 +84,80 @@ const puzzles = [
     phase: "placing",
     solution: 7,
   },
+
+  {
+    title: "Win in 1",
+    instruction:
+      "Place your blue stone on the top-middle node to complete the column.",
+    board: [P2, null, P2, null, P1, null, null, P1, null],
+    phase: "placing",
+    solution: 1,
+  },
+  {
+    title: "Block First",
+    instruction:
+      "Place your blue stone on the bottom-right node to block PC's diagonal threat.",
+    board: [P2, P1, null, null, P2, P1, null, null, null],
+    phase: "placing",
+    solution: 8,
+  },
+  {
+    title: "Move to Win",
+    instruction:
+      "Move the selected blue stone to the bottom-left node to complete the diagonal.",
+    board: [P1, P2, null, null, P1, P2, null, null, P2],
+    phase: "moving",
+    solutionFrom: 7,
+    solution: 6,
+  },
+  {
+    title: "Center Control",
+    instruction:
+      "Place your blue stone on the center node to create the strongest position.",
+    board: [P1, null, P2, null, null, null, P2, null, P1],
+    phase: "placing",
+    solution: 4,
+  },
 ];
+
+const PUZZLE_PACKS = [
+  {
+    id: "beginner",
+    icon: "🟢",
+    title: "Beginner Pack",
+    desc: "Simple win-in-one puzzles.",
+    puzzles: [0, 1],
+    reward: 30,
+  },
+  {
+    id: "intermediate",
+    icon: "🟡",
+    title: "Intermediate Pack",
+    desc: "Blocks and setup moves.",
+    puzzles: [3, 4, 5],
+    reward: 50,
+  },
+  {
+    id: "expert",
+    icon: "🔴",
+    title: "Expert Pack",
+    desc: "Movement puzzles and tactical wins.",
+    puzzles: [2, 6],
+    reward: 75,
+  },
+  {
+    id: "master",
+    icon: "👑",
+    title: "Master Pack",
+    desc: "Mixed puzzles for strong players.",
+    puzzles: [0, 2, 5, 6, 7],
+    reward: 100,
+  },
+];
+
+let activePuzzlePack = null;
+let activePuzzlePackPosition = 0;
+let puzzleSolved = false;
 let mode = "pc",
   playerName = "Player",
   difficulty = "medium",
@@ -229,6 +302,9 @@ const d = {};
   "saveAccessibilityBtn",
   "resetAccessibilityBtn",
   "tutorialBtn",
+  "puzzlePacksBtn",
+  "puzzlePackList",
+  "puzzlePackStatus",
   "startTutorialBtn",
   "hintBtn",
 ].forEach((id) => (d[id] = $(id)));
@@ -911,7 +987,7 @@ function canClick(i) {
   if (mode === "online" || mode === "random") return turn === onlinePlayer;
   if (turn !== P1) return false;
   if (mode === "puzzle") {
-    if (phase === "placing") return board[i] === null;
+    if (phase === "placing") return board[i] === null && count(P1) < MAX;
     if (selected === null) return board[i] === P1 && emptyNs(i).length;
     return i === selected || board[i] === P1 || available.includes(i);
   }
@@ -932,14 +1008,12 @@ function clickNode(i) {
   isMovePhase() ? moveStone(i) : placeStone(i);
 }
 function placeStone(i) {
-  if (board[i] !== null) return;
+  if (gameWinner || board[i] !== null || count(P1) >= MAX) return;
   board[i] = P1;
   moves++;
   ping("place");
   if (mode === "puzzle") {
-    completePuzzle(
-      activePuzzle && i === activePuzzle.solution && !!findWin(P1),
-    );
+    completePuzzle(isPuzzleMoveCorrect(i));
     render();
     return;
   }
@@ -950,6 +1024,7 @@ function placeStone(i) {
   setTimeout(pcTurn, 450);
 }
 function moveStone(i) {
+  if (gameWinner) return;
   if (selected === null) {
     if (board[i] === P1 && emptyNs(i).length) {
       selected = i;
@@ -979,9 +1054,7 @@ function moveStone(i) {
     moves++;
     ping("move");
     if (mode === "puzzle") {
-      completePuzzle(
-        activePuzzle && i === activePuzzle.solution && !!findWin(P1),
-      );
+      completePuzzle(isPuzzleMoveCorrect(i));
       render();
       return;
     }
@@ -1158,7 +1231,90 @@ function updatePuzzle() {
   d.puzzleInstruction.textContent = pz.instruction;
   d.puzzleStatus.textContent = "Puzzle ready.";
 }
+
+function puzzlePackKey() {
+  return `threeStonesPuzzlePacksV32_${currentAccountId || "guest"}`;
+}
+
+function loadPuzzlePackProgress() {
+  return JSON.parse(localStorage.getItem(puzzlePackKey()) || "{}");
+}
+
+function savePuzzlePackProgress(progress) {
+  localStorage.setItem(puzzlePackKey(), JSON.stringify(progress));
+}
+
+function showPuzzlePacks() {
+  const progress = loadPuzzlePackProgress();
+  d.puzzlePackList.innerHTML = "";
+
+  PUZZLE_PACKS.forEach((pack) => {
+    const solved = progress[pack.id]?.solved || 0;
+    const total = pack.puzzles.length;
+    const row = document.createElement("div");
+    row.className = "puzzle-pack-row";
+    row.innerHTML = `<div class="puzzle-pack-icon">${pack.icon}</div><div><div class="puzzle-pack-title">${pack.title}</div><div class="puzzle-pack-meta">${pack.desc} • Reward: ${pack.reward} coins</div></div><div><div class="puzzle-pack-progress">${solved}/${total}</div><button class="primary-btn" data-pack-id="${pack.id}">Start</button></div>`;
+    d.puzzlePackList.appendChild(row);
+  });
+
+  d.puzzlePackList.querySelectorAll("[data-pack-id]").forEach((button) => {
+    button.addEventListener("click", () =>
+      startPuzzlePack(button.dataset.packId),
+    );
+  });
+
+  showScreen("puzzlePacksScreen");
+}
+
+function startPuzzlePack(packId) {
+  const pack = PUZZLE_PACKS.find((item) => item.id === packId);
+  if (!pack) return;
+
+  const progress = loadPuzzlePackProgress();
+  const solved = progress[pack.id]?.solved || 0;
+  activePuzzlePack = pack;
+  activePuzzlePackPosition = solved >= pack.puzzles.length ? 0 : solved;
+  setText(d.puzzlePackStatus, `Starting ${pack.title}.`);
+  startPuzzle(pack.puzzles[activePuzzlePackPosition], true);
+}
+
+function completePuzzlePackStep() {
+  if (!activePuzzlePack) return;
+
+  const progress = loadPuzzlePackProgress();
+  const total = activePuzzlePack.puzzles.length;
+  const currentSolved = progress[activePuzzlePack.id]?.solved || 0;
+  const nextSolved = Math.max(currentSolved, activePuzzlePackPosition + 1);
+  const alreadyComplete = currentSolved >= total;
+
+  progress[activePuzzlePack.id] = {
+    solved: Math.min(nextSolved, total),
+    completed: nextSolved >= total,
+  };
+  savePuzzlePackProgress(progress);
+
+  if (nextSolved >= total && !alreadyComplete) {
+    awardCoins(activePuzzlePack.reward);
+    setText(
+      d.message,
+      `${activePuzzlePack.title} complete! Bonus: ${activePuzzlePack.reward} coins.`,
+    );
+  }
+}
+
+function isPuzzleMoveCorrect(nodeId) {
+  if (!activePuzzle) return false;
+  if (nodeId !== activePuzzle.solution) return false;
+  if (
+    activePuzzle.title === "Block First" ||
+    activePuzzle.title === "Center Control"
+  )
+    return true;
+  return Boolean(findWin(P1));
+}
+
 function startPuzzle(i = puzzleToday(), practice = false) {
+  puzzleSolved = false;
   activePuzzle = { ...puzzles[i], index: i, isPractice: practice };
   mode = "puzzle";
   board = [...activePuzzle.board];
@@ -1169,10 +1325,15 @@ function startPuzzle(i = puzzleToday(), practice = false) {
   selected = activePuzzle.solutionFrom ?? null;
   available = selected === null ? [] : emptyNs(selected);
   moves = 0;
-  d.gameModeText.textContent = practice ? "Practice Puzzle" : "Daily Puzzle";
+  d.gameModeText.textContent = isInsidePuzzlePack()
+    ? activePuzzlePack.title
+    : practice
+      ? "Practice Puzzle"
+      : "Daily Puzzle";
   d.message.textContent = activePuzzle.instruction;
   d.rematchBtn.textContent = "Try Again";
   d.rematchBtn.classList.add("hidden");
+  updatePuzzlePackGameButtons();
   hideCoach();
   startClock();
   render();
@@ -1180,6 +1341,9 @@ function startPuzzle(i = puzzleToday(), practice = false) {
 }
 function completePuzzle(ok) {
   stopClock();
+  puzzleSolved = ok;
+  gameWinner = ok ? P1 : P2;
+
   if (ok) {
     d.message.textContent = activePuzzle.isPractice
       ? "Practice puzzle solved!"
@@ -1187,6 +1351,7 @@ function completePuzzle(ok) {
     fire();
     ping("win");
     addPuzzleReward();
+    completePuzzlePackStep();
     coach(P1);
   } else {
     d.message.textContent =
@@ -1194,8 +1359,17 @@ function completePuzzle(ok) {
     ping("error");
     coach(P2);
   }
-  d.rematchBtn.textContent = "Try Again";
+
+  if (isInsidePuzzlePack() && ok) {
+    d.rematchBtn.textContent = hasNextPuzzleInPack()
+      ? "Next Puzzle"
+      : "Back to Pack List";
+  } else {
+    d.rematchBtn.textContent = "Try Again";
+  }
   d.rematchBtn.classList.remove("hidden");
+  updatePuzzlePackGameButtons();
+  render();
 }
 function applyState(s) {
   board = s.board;
@@ -1418,6 +1592,7 @@ function wire() {
   };
   d.resetStatsBtn.onclick = resetStats;
   d.tutorialBtn.onclick = () => showScreen("tutorialScreen");
+  safeOn(d.puzzlePacksBtn, "click", showPuzzlePacks);
   d.startTutorialBtn.onclick = () => {
     difficulty = "easy";
     resetGame();
@@ -1451,25 +1626,36 @@ function wire() {
     applyTheme();
   };
   d.hintBtn.onclick = showHint;
-  d.newGameBtn.onclick = () =>
+  d.newGameBtn.onclick = () => {
+    if (isInsidePuzzlePack()) return;
     mode === "puzzle"
       ? startPuzzle(
           activePuzzle?.index ?? puzzleIndex,
           activePuzzle?.isPractice ?? true,
         )
       : resetGame();
+  };
   d.rematchBtn.onclick = () => {
-    if (mode === "puzzle")
+    if (mode === "puzzle") {
+      if (isInsidePuzzlePack()) {
+        if (puzzleSolved) goToNextPuzzleInPack();
+        else startPuzzle(activePuzzle?.index ?? puzzleIndex, true);
+        return;
+      }
       startPuzzle(
         activePuzzle?.index ?? puzzleIndex,
         activePuzzle?.isPractice ?? true,
       );
-    else if (mode === "online" || mode === "random") {
+    } else if (mode === "online" || mode === "random") {
       socket.emit("request-rematch");
       d.message.textContent = "Rematch requested. Waiting for opponent...";
     } else resetGame();
   };
   d.exitGameBtn.onclick = () => {
+    if (isInsidePuzzlePack()) {
+      backToPuzzlePackList();
+      return;
+    }
     stopClock();
     showScreen("homeScreen");
   };
