@@ -293,6 +293,9 @@ const d = {};
   "achievementsBtn",
   "rewardsBtn",
   "coinsBadge",
+  "homeCoinsValue",
+  "homeRankValue",
+  "gameCoinsValue",
   "achievementsList",
   "rewardsCoinsValue",
   "claimDailyRewardBtn",
@@ -741,8 +744,12 @@ function evaluateAchievements() {
 
 function updateRewardBadges() {
   const rewards = loadRewards();
+  const stats = loadStats();
   setText(d.coinsBadge, `Coins: ${rewards.coins}`);
   setText(d.rewardsCoinsValue, `Coins: ${rewards.coins}`);
+  setText(d.homeCoinsValue, rewards.coins);
+  setText(d.gameCoinsValue, rewards.coins);
+  setText(d.homeRankValue, rankName(stats.rating));
   updateThemeOptions();
 }
 
@@ -1077,6 +1084,7 @@ function updateStatsUI() {
   setText(d.detailWinRate, `${wr}%`);
   setText(d.detailBestTime, s.bestTime == null ? "--:--" : fmt(s.bestTime));
   setText(d.detailFewestMoves, s.fewestMoves == null ? "--" : s.fewestMoves);
+  setText(d.homeRankValue, rankName(s.rating));
 
   if (!d.matchHistoryList) return;
   d.matchHistoryList.innerHTML = "";

@@ -815,3 +815,86 @@ body.modal-open {
     transition: none;
   }
 }
+
+/* v3.4.4 Permanent Player Wallet */
+.wallet-panel {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  max-width: 430px;
+  margin: 0 auto 14px;
+}
+.wallet-item {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  background: #0f172a;
+  text-align: left;
+}
+.wallet-coins {
+  border-color: rgba(250, 204, 21, 0.45);
+}
+.wallet-rank {
+  border-color: rgba(56, 189, 248, 0.4);
+}
+.wallet-icon {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  place-items: center;
+  border-radius: 50%;
+  background: #1e293b;
+  font-size: 21px;
+}
+.wallet-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+.wallet-copy span {
+  color: #94a3b8;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.wallet-copy strong {
+  overflow: hidden;
+  color: #fff;
+  font-size: 19px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.wallet-coins strong {
+  color: #facc15;
+}
+.game-header {
+  position: relative;
+}
+.game-wallet {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 auto 8px;
+  padding: 7px 12px;
+  border: 1px solid rgba(250, 204, 21, 0.45);
+  border-radius: 999px;
+  background: #0f172a;
+  color: #cbd5e1;
+  font-size: 13px;
+  font-weight: 800;
+}
+.game-wallet strong {
+  color: #facc15;
+  font-size: 16px;
+}
+@media (max-width: 480px) {
+  .wallet-panel {
+    grid-template-columns: 1fr;
+  }
+}

@@ -22,6 +22,22 @@
           <section class="menu-section account-section">
             <h2>Player</h2>
             <div id="accountBadge" class="account-badge">Playing as Guest</div>
+            <div class="wallet-panel" aria-label="Player wallet">
+              <div class="wallet-item wallet-coins">
+                <span class="wallet-icon" aria-hidden="true">🪙</span>
+                <div class="wallet-copy">
+                  <span>Coins</span>
+                  <strong id="homeCoinsValue">0</strong>
+                </div>
+              </div>
+              <div class="wallet-item wallet-rank">
+                <span class="wallet-icon" aria-hidden="true">🏅</span>
+                <div class="wallet-copy">
+                  <span>Rank</span>
+                  <strong id="homeRankValue">Bronze</strong>
+                </div>
+              </div>
+            </div>
             <div class="menu-grid compact-grid">
               <button id="loginBtn" class="secondary-btn">Login</button>
               <button id="registerBtn" class="secondary-btn">Register</button>
@@ -438,6 +454,11 @@
             <button id="exitGameBtn" class="back-btn">← Menu</button>
             <h1>Three Stones</h1>
             <p id="gameModeText">Play vs PC</p>
+            <div class="game-wallet" aria-label="Current coin balance">
+              <span aria-hidden="true">🪙</span>
+              <strong id="gameCoinsValue">0</strong>
+              <span>Coins</span>
+            </div>
           </header>
           <div id="onlineInfo" class="online-info hidden">
             <span id="onlineRoomBadge">Room: ------</span
