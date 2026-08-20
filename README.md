@@ -19,6 +19,8 @@ This build is based on the original `three-stones-v3.2-puzzle-packs` files you p
 
 ```bash
 npm install
+npm install express
+npm install socket.io
 npm start
 ```
 

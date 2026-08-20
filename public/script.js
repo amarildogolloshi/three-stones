@@ -105,7 +105,7 @@ const puzzles = [
     title: "Move to Win",
     instruction:
       "Move the selected blue stone to the bottom-left node to complete the diagonal.",
-    board: [P1, P2, null, null, P1, P2, null, null, P2],
+    board: [P2, P2, P1, null, P1, P2, null, P1, null],
     phase: "moving",
     solutionFrom: 7,
     solution: 6,
@@ -161,7 +161,7 @@ let puzzleSolved = false;
 let mode = "pc",
   playerName = "Player",
   difficulty = "medium",
-  soundOn = true,
+  soundOn = localStorage.getItem("soundOnV330") !== "false",
   onlinePlayer = null,
   roomId = null;
 let board = Array(9).fill(null),
@@ -186,6 +186,9 @@ const d = {};
 [
   "continueBtn",
   "playPcBtn",
+  "difficultyModal",
+  "closeDifficultyModalBtn",
+  "startPcGameBtn",
   "playOnlineBtn",
   "dailyPuzzleBtn",
   "tournamentBtn",
@@ -1302,9 +1305,41 @@ function completePuzzlePackStep() {
   }
 }
 
+function isInsidePuzzlePack() {
+  return Boolean(activePuzzlePack);
+}
+
+function hasNextPuzzleInPack() {
+  return Boolean(
+    activePuzzlePack &&
+    activePuzzlePackPosition + 1 < activePuzzlePack.puzzles.length,
+  );
+}
+
+function goToNextPuzzleInPack() {
+  if (!activePuzzlePack) return;
+  if (hasNextPuzzleInPack()) {
+    activePuzzlePackPosition += 1;
+    startPuzzle(activePuzzlePack.puzzles[activePuzzlePackPosition], true);
+    return;
+  }
+  backToPuzzlePackList();
+}
+
+function backToPuzzlePackList() {
+  activePuzzlePack = null;
+  activePuzzlePackPosition = 0;
+  stopClock();
+  showPuzzlePacks();
+}
+
+function updatePuzzlePackGameButtons() {
+  if (!d.newGameBtn) return;
+  d.newGameBtn.classList.toggle("hidden", isInsidePuzzlePack());
+}
+
 function isPuzzleMoveCorrect(nodeId) {
-  if (!activePuzzle) return false;
-  if (nodeId !== activePuzzle.solution) return false;
+  if (!activePuzzle || nodeId !== activePuzzle.solution) return false;
   if (
     activePuzzle.title === "Block First" ||
     activePuzzle.title === "Center Control"
@@ -1343,7 +1378,6 @@ function completePuzzle(ok) {
   stopClock();
   puzzleSolved = ok;
   gameWinner = ok ? P1 : P2;
-
   if (ok) {
     d.message.textContent = activePuzzle.isPractice
       ? "Practice puzzle solved!"
@@ -1359,14 +1393,12 @@ function completePuzzle(ok) {
     ping("error");
     coach(P2);
   }
-
-  if (isInsidePuzzlePack() && ok) {
-    d.rematchBtn.textContent = hasNextPuzzleInPack()
-      ? "Next Puzzle"
-      : "Back to Pack List";
-  } else {
-    d.rematchBtn.textContent = "Try Again";
-  }
+  d.rematchBtn.textContent =
+    isInsidePuzzlePack() && ok
+      ? hasNextPuzzleInPack()
+        ? "Next Puzzle"
+        : "Back to Pack List"
+      : "Try Again";
   d.rematchBtn.classList.remove("hidden");
   updatePuzzlePackGameButtons();
   render();
@@ -1538,13 +1570,51 @@ function registerPwa() {
   if (d.installBtn) d.installBtn.classList.add("hidden");
 }
 
+function openDifficultyModal() {
+  if (!d.difficultyModal) return;
+  d.difficultyModal.classList.remove("hidden");
+  document.body.classList.add("modal-open");
+  const selectedButton = d.difficultyModal.querySelector(
+    `[data-difficulty="${difficulty}"]`,
+  );
+  selectedButton?.focus();
+}
+
+function closeDifficultyModal() {
+  if (!d.difficultyModal) return;
+  d.difficultyModal.classList.add("hidden");
+  document.body.classList.remove("modal-open");
+  d.playPcBtn?.focus();
+}
+
+function selectDifficulty(level) {
+  difficulty = level;
+  if (d.difficultySelect) d.difficultySelect.value = level;
+  d.difficultyModal
+    ?.querySelectorAll("[data-difficulty]")
+    .forEach((button) =>
+      button.classList.toggle("selected", button.dataset.difficulty === level),
+    );
+}
+
+function startSelectedPcGame() {
+  closeDifficultyModal();
+  resetGame();
+  showScreen("gameScreen");
+}
+
 function wire() {
   d.continueBtn?.addEventListener("click", () => {
     playerName = d.playerNameInput.value.trim() || "Player";
-    difficulty = d.difficultySelect.value;
-    soundOn = d.soundToggle.checked;
     showScreen("homeScreen");
   });
+  if (d.soundToggle) {
+    d.soundToggle.checked = soundOn;
+    d.soundToggle.addEventListener("change", () => {
+      soundOn = d.soundToggle.checked;
+      localStorage.setItem("soundOnV330", String(soundOn));
+    });
+  }
   d.loginBtn.onclick = () => showScreen("loginScreen");
   d.registerBtn.onclick = () => showScreen("registerScreen");
   d.createAccountBtn.onclick = createAccount;
@@ -1555,11 +1625,27 @@ function wire() {
   safeOn(d.achievementsBtn, "click", showAchievements);
   safeOn(d.rewardsBtn, "click", showRewardsStore);
   safeOn(d.claimDailyRewardBtn, "click", claimDailyReward);
-  d.playPcBtn.onclick = () => {
-    difficulty = d.difficultySelect.value;
-    resetGame();
-    showScreen("gameScreen");
-  };
+  d.playPcBtn.onclick = openDifficultyModal;
+  safeOn(d.closeDifficultyModalBtn, "click", closeDifficultyModal);
+  safeOn(d.startPcGameBtn, "click", startSelectedPcGame);
+  d.difficultyModal
+    ?.querySelectorAll("[data-difficulty]")
+    .forEach((button) =>
+      button.addEventListener("click", () =>
+        selectDifficulty(button.dataset.difficulty),
+      ),
+    );
+  safeOn(d.difficultyModal, "click", (event) => {
+    if (event.target === d.difficultyModal) closeDifficultyModal();
+  });
+  document.addEventListener("keydown", (event) => {
+    if (
+      event.key === "Escape" &&
+      !d.difficultyModal?.classList.contains("hidden")
+    ) {
+      closeDifficultyModal();
+    }
+  });
   d.playOnlineBtn.onclick = () => {
     if (!ONLINE_AVAILABLE) {
       showOnlineRequiredMessage();
@@ -1784,6 +1870,7 @@ updateAccountUI();
 updateRewardBadges();
 updateStatsUI();
 updateClock();
+if (d.soundToggle) d.soundToggle.checked = soundOn;
 wire();
 updateStaticSafeUi();
 wireSocket();

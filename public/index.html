@@ -17,20 +17,6 @@
           <p>Enter your name, choose a difficulty, and start playing.</p>
           <label class="field-label" for="playerNameInput">Player Name</label>
           <input id="playerNameInput" maxlength="18" value="Player" />
-          <label class="field-label" for="difficultySelect"
-            >PC Difficulty</label
-          >
-          <select id="difficultySelect">
-            <option value="easy">Easy</option>
-            <option value="medium" selected>Medium</option>
-            <option value="hard">Hard</option>
-            <option value="expert">Expert</option>
-          </select>
-          <label class="toggle-row"
-            ><input id="soundToggle" type="checkbox" checked /><span
-              >Sound effects</span
-            ></label
-          >
           <button id="continueBtn" class="primary-btn">Continue</button>
         </div>
       </section>
@@ -98,6 +84,10 @@
 
           <section class="menu-section">
             <h2>Settings</h2>
+            <label class="toggle-row setting-toggle sound-setting-row">
+              <input id="soundToggle" type="checkbox" checked />
+              <span>Sound effects</span>
+            </label>
             <div class="menu-grid compact-grid">
               <button id="customizeBtn" class="secondary-btn">
                 Themes & Pieces
@@ -508,6 +498,44 @@
           </div>
         </div>
       </section>
+
+      <div
+        id="difficultyModal"
+        class="modal-overlay hidden"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="difficultyModalTitle"
+      >
+        <div class="modal-card">
+          <button
+            id="closeDifficultyModalBtn"
+            class="modal-close-btn"
+            aria-label="Close difficulty selection"
+          >
+            ×
+          </button>
+          <div class="logo-dot modal-logo-dot">●</div>
+          <h2 id="difficultyModalTitle">Choose PC Difficulty</h2>
+          <p>Select the computer level for this game.</p>
+          <div class="difficulty-grid">
+            <button class="difficulty-option" data-difficulty="easy">
+              <strong>Easy</strong><span>Best for learning the rules</span>
+            </button>
+            <button class="difficulty-option selected" data-difficulty="medium">
+              <strong>Medium</strong><span>Balanced challenge</span>
+            </button>
+            <button class="difficulty-option" data-difficulty="hard">
+              <strong>Hard</strong><span>Stronger defense and strategy</span>
+            </button>
+            <button class="difficulty-option" data-difficulty="expert">
+              <strong>Expert</strong><span>Maximum challenge</span>
+            </button>
+          </div>
+          <button id="startPcGameBtn" class="primary-btn modal-start-btn">
+            Start Game
+          </button>
+        </div>
+      </div>
     </main>
     <script src="/socket.io/socket.io.js"></script>
     <script src="script.js"></script>
