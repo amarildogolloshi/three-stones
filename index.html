@@ -3,125 +3,60 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Three Stones Online</title>
+  <title>Three Stones</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <main class="app-shell">
-    <section id="homeScreen" class="screen active">
-      <div class="card hero-card">
-        <div class="logo-dot">●</div>
+  <main class="game-shell">
+    <section class="game-card">
+      <header class="game-header">
         <h1>Three Stones</h1>
-        <p>
-          Place 3 stones, then move them across connected nodes.
-          First player to make 3 in a line wins.
-        </p>
-        <button id="playPcBtn" class="primary-btn">Play vs PC</button>
-        <button id="playOnlineBtn" class="secondary-btn">Play Online</button>
-      </div>
-    </section>
+        <p>User vs PC. Place 3 stones, then move them to connected empty nodes. Make 3 in a line to win.</p>
+      </header>
 
-    <section id="onlineMenuScreen" class="screen">
-      <div class="card menu-card">
-        <button class="back-btn" data-screen="homeScreen">← Back</button>
-        <h2>Play Online</h2>
-        <p>Choose how you want to play with another person.</p>
-        <button id="friendModeBtn" class="primary-btn">Play with Friend</button>
-        <button id="randomModeBtn" class="secondary-btn">Random Opponent</button>
-      </div>
-    </section>
-
-    <section id="friendScreen" class="screen">
-      <div class="card menu-card">
-        <button class="back-btn" data-screen="onlineMenuScreen">← Back</button>
-        <h2>Play with Friend</h2>
-        <p>Create a room and send the link, or join with a room code.</p>
-
-        <button id="createRoomBtn" class="primary-btn">Create Room</button>
-
-        <div id="createdRoomBox" class="room-box hidden">
-          <span class="small-label">Room Code</span>
-          <div id="roomCodeDisplay" class="room-code">------</div>
-          <input id="roomLinkInput" readonly placeholder="Room link will appear here" />
-          <div class="room-actions">
-            <button id="copyCodeBtn">Copy Code</button>
-            <button id="copyLinkBtn">Copy Link</button>
-          </div>
+      <section class="score-row" aria-label="Game score">
+        <div class="score-box user-box">
+          <span class="label">You</span>
+          <span><strong id="userCount">0</strong>/3</span>
         </div>
-
-        <div class="join-box">
-          <label for="joinCodeInput">Join Room Code</label>
-          <input id="joinCodeInput" maxlength="6" placeholder="ABC123" />
-          <button id="joinRoomBtn" class="secondary-btn">Join Room</button>
+        <div class="turn-box" id="turnBox">Your Turn</div>
+        <div class="score-box pc-box">
+          <span class="label">PC</span>
+          <span><strong id="pcCount">0</strong>/3</span>
         </div>
+      </section>
 
-        <p id="friendStatus" class="status-text">Create a room or enter a friend code.</p>
-      </div>
-    </section>
+      <section class="board-wrap" aria-label="Three Stones board">
+        <svg class="board-lines" viewBox="0 0 100 100" aria-hidden="true">
+          <line x1="15" y1="15" x2="50" y2="15"></line>
+          <line x1="50" y1="15" x2="85" y2="15"></line>
+          <line x1="15" y1="50" x2="50" y2="50"></line>
+          <line x1="50" y1="50" x2="85" y2="50"></line>
+          <line x1="15" y1="85" x2="50" y2="85"></line>
+          <line x1="50" y1="85" x2="85" y2="85"></line>
 
-    <section id="randomScreen" class="screen">
-      <div class="card menu-card searching-card">
-        <button class="back-btn" data-screen="onlineMenuScreen">← Cancel</button>
-        <div class="search-icon">🔍</div>
-        <h2>Finding Opponent</h2>
-        <p id="randomStatus">Searching for an online player...</p>
-        <div class="loader-dots">
-          <span></span>
-          <span></span>
-          <span></span>
-        </div>
-      </div>
-    </section>
+          <line x1="15" y1="15" x2="15" y2="50"></line>
+          <line x1="15" y1="50" x2="15" y2="85"></line>
+          <line x1="50" y1="15" x2="50" y2="50"></line>
+          <line x1="50" y1="50" x2="50" y2="85"></line>
+          <line x1="85" y1="15" x2="85" y2="50"></line>
+          <line x1="85" y1="50" x2="85" y2="85"></line>
 
-    <section id="gameScreen" class="screen">
-      <div class="card game-card">
-        <header class="game-header">
-          <button id="exitGameBtn" class="back-btn">← Menu</button>
-          <h1>Three Stones</h1>
-          <p id="gameModeText">Play vs PC</p>
-        </header>
+          <line x1="15" y1="15" x2="50" y2="50"></line>
+          <line x1="50" y1="50" x2="85" y2="85"></line>
+          <line x1="85" y1="15" x2="50" y2="50"></line>
+          <line x1="50" y1="50" x2="15" y2="85"></line>
+        </svg>
 
-        <div id="onlineInfo" class="online-info hidden">
-          <span id="onlineRoomBadge">Room: ------</span>
-          <span id="connectionBadge">🟢 Connected</span>
-        </div>
+        <div id="board" class="board-nodes"></div>
+      </section>
 
-        <section class="score-row" aria-label="Game score">
-          <div class="score-box user-box">
-            <span id="playerOneLabel">You</span>
-            <strong><span id="playerOneCount">0</span>/3</strong>
-          </div>
+      <p id="message" class="message">Your turn. Place your first stone.</p>
 
-          <div id="turnBox" class="turn-box">Your Turn</div>
-
-          <div class="score-box opponent-box">
-            <span id="playerTwoLabel">PC</span>
-            <strong><span id="playerTwoCount">0</span>/3</strong>
-          </div>
-        </section>
-
-        <section class="board-wrap" aria-label="Three Stones board">
-          <svg class="board-lines" viewBox="0 0 100 100" aria-hidden="true">
-            <line x1="15" y1="15" x2="85" y2="15"></line>
-            <line x1="15" y1="50" x2="85" y2="50"></line>
-            <line x1="15" y1="85" x2="85" y2="85"></line>
-            <line x1="15" y1="15" x2="15" y2="85"></line>
-            <line x1="50" y1="15" x2="50" y2="85"></line>
-            <line x1="85" y1="15" x2="85" y2="85"></line>
-            <line x1="15" y1="15" x2="85" y2="85"></line>
-            <line x1="85" y1="15" x2="15" y2="85"></line>
-          </svg>
-
-          <div id="boardNodes" class="board-nodes"></div>
-        </section>
-
-        <p id="message" class="message">Your turn.</p>
-        <button id="newGameBtn" class="reset-btn">New Game</button>
-      </div>
+      <button id="resetBtn" class="reset-btn">New Game</button>
     </section>
   </main>
 
-  <script src="/socket.io/socket.io.js"></script>
   <script src="script.js"></script>
 </body>
 </html>
