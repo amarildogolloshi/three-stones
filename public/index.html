@@ -316,34 +316,59 @@
         </div>
       </section>
       <section id="statsScreen" class="screen">
-        <div class="card menu-card">
+        <div class="card menu-card stats-history-card">
           <button class="back-btn" data-screen="homeScreen">← Home</button>
-          <h2>Stats & History</h2>
-          <section class="stats-grid">
+          <div class="stats-title-block">
+            <span class="stats-title-icon" aria-hidden="true">📊</span>
             <div>
-              <span>Rank</span><strong id="detailRankTitle">Bronze</strong>
+              <h2>Stats & History</h2>
+              <p>Your complete performance and recent match results.</p>
             </div>
-            <div>
-              <span>Ranking Points</span
-              ><strong id="detailRankPoints">1000</strong>
+          </div>
+          <section class="stats-rank-summary" aria-label="Current ranking">
+            <div class="stats-rank-medal" aria-hidden="true">🏅</div>
+            <div class="stats-rank-copy">
+              <span>Current Rank</span>
+              <strong id="detailRankTitle">Bronze</strong>
             </div>
-            <div><span>Games</span><strong id="detailGames">0</strong></div>
-            <div><span>Wins</span><strong id="detailWins">0</strong></div>
-            <div><span>Losses</span><strong id="detailLosses">0</strong></div>
-            <div>
+            <div class="stats-rp-copy">
+              <span>Rating Points</span>
+              <strong><span id="detailRankPoints">1000</span> RP</strong>
+            </div>
+          </section>
+          <section class="stats-grid stats-performance-grid">
+            <div class="stat-tile">
+              <span>Games Played</span><strong id="detailGames">0</strong>
+            </div>
+            <div class="stat-tile stat-win-tile">
+              <span>Wins</span><strong id="detailWins">0</strong>
+            </div>
+            <div class="stat-tile stat-loss-tile">
+              <span>Losses</span><strong id="detailLosses">0</strong>
+            </div>
+            <div class="stat-tile">
               <span>Win Rate</span><strong id="detailWinRate">0%</strong>
             </div>
-            <div>
+            <div class="stat-tile">
               <span>Best Time</span><strong id="detailBestTime">--:--</strong>
             </div>
-            <div>
+            <div class="stat-tile">
               <span>Fewest Moves</span
               ><strong id="detailFewestMoves">--</strong>
             </div>
           </section>
-          <h3>Recent Matches</h3>
+          <div class="history-heading-row">
+            <div>
+              <h3>Recent Matches</h3>
+              <p>Latest games, results, moves, time, and RP changes.</p>
+            </div>
+            <span class="history-heading-icon" aria-hidden="true">🕘</span>
+          </div>
           <div id="matchHistoryList" class="history-list"></div>
-          <button id="resetStatsBtn" class="secondary-btn danger-btn">
+          <button
+            id="resetStatsBtn"
+            class="secondary-btn danger-btn stats-reset-btn"
+          >
             Reset Stats
           </button>
         </div>

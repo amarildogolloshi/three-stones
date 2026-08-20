@@ -1099,7 +1099,7 @@ function updateStatsUI() {
     item.className = "history-item";
     const label = m.result === "win" ? "W" : "L";
     const rp = m.ratingChange > 0 ? `+${m.ratingChange}` : m.ratingChange;
-    item.innerHTML = `<div class="history-result ${m.result}">${label}</div><div><strong>${m.mode} vs ${m.opponent}</strong><div class="history-meta">${m.date} • ${m.moves} moves • ${fmt(m.seconds)}</div></div><div class="history-rp">${rp} RP</div>`;
+    item.innerHTML = `<div class="history-result ${m.result}">${label}</div><div class="history-main"><strong>${m.mode === "pc" ? "vs PC" : "Online"}${m.opponent && m.opponent !== "PC" ? ` vs ${m.opponent}` : ""}</strong><div class="history-meta">${m.date}</div><div class="history-details"><span>🎯 ${m.moves} moves</span><span>⏱️ ${fmt(m.seconds)}</span></div></div><div class="history-rp ${m.ratingChange >= 0 ? "positive" : "negative"}">${rp} RP</div>`;
     d.matchHistoryList.appendChild(item);
   });
 }

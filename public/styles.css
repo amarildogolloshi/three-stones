@@ -898,3 +898,208 @@ body.modal-open {
     grid-template-columns: 1fr;
   }
 }
+
+/* v3.4.5 Restored Stats and Match History Design */
+.stats-history-card {
+  width: min(94vw, 760px);
+  padding-top: 72px;
+}
+.stats-title-block {
+  display: flex;
+  max-width: 560px;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  margin: 0 auto 20px;
+  text-align: left;
+}
+.stats-title-block h2,
+.stats-title-block p {
+  margin: 0;
+}
+.stats-title-icon {
+  display: grid;
+  width: 52px;
+  height: 52px;
+  flex: 0 0 52px;
+  place-items: center;
+  border-radius: 16px;
+  background: #1e293b;
+  font-size: 27px;
+  border: 1px solid rgba(250, 204, 21, 0.35);
+}
+.stats-rank-summary {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 14px;
+  margin: 18px 0;
+  padding: 16px;
+  border: 1px solid rgba(250, 204, 21, 0.38);
+  border-radius: 18px;
+  background: linear-gradient(135deg, #1e293b, #111827);
+  text-align: left;
+}
+.stats-rank-medal {
+  display: grid;
+  width: 54px;
+  height: 54px;
+  place-items: center;
+  border-radius: 50%;
+  background: #0f172a;
+  font-size: 29px;
+}
+.stats-rank-copy,
+.stats-rp-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.stats-rank-copy span,
+.stats-rp-copy span {
+  color: #94a3b8;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.stats-rank-copy strong,
+.stats-rp-copy strong {
+  color: #facc15;
+  font-size: 21px;
+}
+.stats-rp-copy {
+  align-items: flex-end;
+  text-align: right;
+}
+.stats-performance-grid {
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+.stats-performance-grid .stat-tile {
+  min-height: 92px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: linear-gradient(145deg, #1e293b, #172033);
+  transition:
+    transform 160ms ease,
+    border-color 160ms ease;
+}
+.stats-performance-grid .stat-tile:hover {
+  transform: translateY(-2px);
+  border-color: rgba(250, 204, 21, 0.32);
+}
+.stats-performance-grid .stat-win-tile strong {
+  color: #4ade80;
+}
+.stats-performance-grid .stat-loss-tile strong {
+  color: #f87171;
+}
+.history-heading-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin: 22px 0 12px;
+  text-align: left;
+}
+.history-heading-row h3,
+.history-heading-row p {
+  margin: 0;
+}
+.history-heading-row p {
+  color: #94a3b8;
+  font-size: 13px;
+}
+.history-heading-icon {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  flex: 0 0 42px;
+  place-items: center;
+  border-radius: 50%;
+  background: #1e293b;
+  font-size: 22px;
+}
+.stats-history-card .history-list {
+  max-height: 340px;
+  padding-right: 5px;
+}
+.stats-history-card .history-item {
+  grid-template-columns: auto 1fr auto;
+  padding: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: linear-gradient(145deg, #1e293b, #111827);
+}
+.stats-history-card .history-result {
+  width: 44px;
+  height: 44px;
+}
+.stats-history-card .history-result.win {
+  box-shadow: 0 0 0 4px rgba(22, 163, 74, 0.16);
+}
+.stats-history-card .history-result.loss {
+  box-shadow: 0 0 0 4px rgba(220, 38, 38, 0.16);
+}
+.history-main {
+  min-width: 0;
+}
+.history-main > strong {
+  color: #fff;
+  font-size: 15px;
+}
+.history-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 5px;
+  color: #cbd5e1;
+  font-size: 12px;
+}
+.stats-history-card .history-rp {
+  padding: 7px 9px;
+  border-radius: 999px;
+  background: #0f172a;
+  white-space: nowrap;
+}
+.stats-history-card .history-rp.positive {
+  color: #4ade80;
+}
+.stats-history-card .history-rp.negative {
+  color: #f87171;
+}
+.stats-reset-btn {
+  margin-top: 18px;
+}
+@media (max-width: 600px) {
+  .stats-history-card {
+    padding-top: 66px;
+  }
+  .stats-title-block {
+    padding-top: 4px;
+  }
+  .stats-rank-summary {
+    grid-template-columns: auto 1fr;
+  }
+  .stats-rp-copy {
+    grid-column: 1 / -1;
+    align-items: flex-start;
+    padding-top: 10px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    text-align: left;
+  }
+  .stats-performance-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .stats-history-card .history-item {
+    grid-template-columns: auto 1fr;
+  }
+  .stats-history-card .history-rp {
+    grid-column: 2;
+    justify-self: start;
+  }
+}
+@media (max-width: 420px) {
+  .stats-performance-grid {
+    grid-template-columns: 1fr;
+  }
+}
