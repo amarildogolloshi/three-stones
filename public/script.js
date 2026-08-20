@@ -10,7 +10,7 @@ const socket = ONLINE_AVAILABLE
 const P1 = "player1";
 const P2 = "player2";
 const MAX = 3;
-const GUEST_NAME_KEY = "threeStonesGuestNameV341";
+const GUEST_NAME_KEY = "threeStonesGuestNameV342";
 
 function generateGuestName() {
   const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";

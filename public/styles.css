@@ -111,7 +111,24 @@ button {
   background: #7f1d1d !important;
 }
 .back-btn {
-  float: left;
+  position: absolute;
+  top: 22px;
+  left: 22px;
+  z-index: 10;
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: 12px;
+}
+.back-btn:hover {
+  background: #475569;
+}
+.back-btn:focus-visible {
+  outline: 3px solid #facc15;
+  outline-offset: 3px;
+}
+.menu-card,
+.game-card {
+  padding-top: 78px;
 }
 .hidden {
   display: none !important;
@@ -719,4 +736,18 @@ body.modal-open {
 /* v3.3.0 Sound Setting */
 .sound-setting-row {
   margin: 0 0 14px;
+}
+
+/* v3.4.2 Consistent Back Button Layout */
+@media (max-width: 600px) {
+  .back-btn {
+    top: 14px;
+    left: 14px;
+    padding: 9px 12px;
+    font-size: 14px;
+  }
+  .menu-card,
+  .game-card {
+    padding-top: 70px;
+  }
 }
