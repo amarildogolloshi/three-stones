@@ -1,4 +1,4 @@
-const CACHE_NAME = "three-stones-v3-3-0-sound-settings-cache";
+const CACHE_NAME = "three-stones-v3-4-0-sqlite-cache";
 const APP_SHELL = [
   "/",
   "/index.html",

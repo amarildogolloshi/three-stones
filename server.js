@@ -3,6 +3,8 @@ import http from "http";
 import { Server } from "socket.io";
 import path from "path";
 import { fileURLToPath } from "url";
+import crypto from "crypto";
+import { db, getFullState, publicUser } from "./database.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -10,6 +12,209 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 const PORT = process.env.PORT || 3000;
+const SESSION_DAYS = 30;
+
+app.use(express.json({ limit: "100kb" }));
+
+function hashPassword(password, salt = crypto.randomBytes(16).toString("hex")) {
+  const hash = crypto.scryptSync(password, salt, 64).toString("hex");
+  return { salt, hash };
+}
+
+function passwordMatches(password, salt, expectedHash) {
+  const actual = crypto.scryptSync(password, salt, 64);
+  const expected = Buffer.from(expectedHash, "hex");
+  return (
+    actual.length === expected.length &&
+    crypto.timingSafeEqual(actual, expected)
+  );
+}
+
+function issueSession(userId) {
+  const token = crypto.randomBytes(32).toString("hex");
+  const expiresAt = new Date(
+    Date.now() + SESSION_DAYS * 86400000,
+  ).toISOString();
+  db.prepare("DELETE FROM sessions WHERE expires_at <= ?").run(
+    new Date().toISOString(),
+  );
+  db.prepare(
+    "INSERT INTO sessions (token, user_id, expires_at) VALUES (?, ?, ?)",
+  ).run(token, userId, expiresAt);
+  return { token, expiresAt };
+}
+
+function authenticatedUser(req, res, next) {
+  const header = req.get("authorization") || "";
+  const token = header.startsWith("Bearer ") ? header.slice(7) : "";
+  const session = db
+    .prepare(
+      `
+    SELECT sessions.user_id, sessions.expires_at
+    FROM sessions WHERE sessions.token = ?
+  `,
+    )
+    .get(token);
+  if (!session || session.expires_at <= new Date().toISOString()) {
+    return res.status(401).json({ error: "Authentication required." });
+  }
+  req.userId = session.user_id;
+  req.sessionToken = token;
+  next();
+}
+
+app.post("/api/register", (req, res) => {
+  const username = String(req.body?.username || "").trim();
+  const password = String(req.body?.password || "");
+  const avatar = String(req.body?.avatar || "🐺").slice(0, 8);
+  if (!/^[a-zA-Z0-9 _-]{2,18}$/.test(username)) {
+    return res.status(400).json({ error: "Username must be 2-18 characters." });
+  }
+  if (password.length < 6 || password.length > 72) {
+    return res.status(400).json({ error: "Password must be 6-72 characters." });
+  }
+  if (db.prepare("SELECT 1 FROM users WHERE username = ?").get(username)) {
+    return res.status(409).json({ error: "That username already exists." });
+  }
+  const id = crypto.randomUUID();
+  const { salt, hash } = hashPassword(password);
+  const create = db.transaction(() => {
+    db.prepare(
+      `INSERT INTO users (id, username, password_hash, password_salt, avatar) VALUES (?, ?, ?, ?, ?)`,
+    ).run(id, username, hash, salt, avatar);
+    db.prepare("INSERT INTO rewards (user_id) VALUES (?)").run(id);
+  });
+  create();
+  const session = issueSession(id);
+  return res.status(201).json({ ...session, state: getFullState(id) });
+});
+
+app.post("/api/login", (req, res) => {
+  const username = String(req.body?.username || "").trim();
+  const password = String(req.body?.password || "");
+  const user = db
+    .prepare("SELECT * FROM users WHERE username = ?")
+    .get(username);
+  if (
+    !user ||
+    !passwordMatches(password, user.password_salt, user.password_hash)
+  ) {
+    return res
+      .status(401)
+      .json({ error: "Username or password is not correct." });
+  }
+  const session = issueSession(user.id);
+  return res.json({ ...session, state: getFullState(user.id) });
+});
+
+app.post("/api/logout", authenticatedUser, (req, res) => {
+  db.prepare("DELETE FROM sessions WHERE token = ?").run(req.sessionToken);
+  res.status(204).end();
+});
+
+app.get("/api/me", authenticatedUser, (req, res) => {
+  res.json(getFullState(req.userId));
+});
+
+app.get("/api/leaderboard", (_req, res) => {
+  const rows = db
+    .prepare(
+      `
+    SELECT id, username, avatar, rating, games, wins, losses, best_time, fewest_moves
+    FROM users ORDER BY rating DESC, wins DESC, username ASC LIMIT 100
+  `,
+    )
+    .all();
+  res.json(rows.map(publicUser));
+});
+
+app.put("/api/state", authenticatedUser, (req, res) => {
+  const stats = req.body?.stats || {};
+  const rewards = req.body?.rewards || {};
+  const packs = req.body?.puzzleProgress || {};
+  const save = db.transaction(() => {
+    db.prepare(
+      `
+      UPDATE users SET rating = ?, games = ?, wins = ?, losses = ?, best_time = ?,
+        fewest_moves = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?
+    `,
+    ).run(
+      Math.max(100, Number(stats.rating) || 1000),
+      Math.max(0, Number(stats.games) || 0),
+      Math.max(0, Number(stats.wins) || 0),
+      Math.max(0, Number(stats.losses) || 0),
+      stats.bestTime == null ? null : Math.max(0, Number(stats.bestTime) || 0),
+      stats.fewestMoves == null
+        ? null
+        : Math.max(0, Number(stats.fewestMoves) || 0),
+      req.userId,
+    );
+    db.prepare(
+      `
+      INSERT INTO rewards (user_id, coins, achievements_json, unlocked_themes_json,
+        puzzles_solved, daily_reward_date, daily_streak)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(user_id) DO UPDATE SET coins = excluded.coins,
+        achievements_json = excluded.achievements_json,
+        unlocked_themes_json = excluded.unlocked_themes_json,
+        puzzles_solved = excluded.puzzles_solved,
+        daily_reward_date = excluded.daily_reward_date,
+        daily_streak = excluded.daily_streak,
+        updated_at = CURRENT_TIMESTAMP
+    `,
+    ).run(
+      req.userId,
+      Math.max(0, Number(rewards.coins) || 0),
+      JSON.stringify(
+        Array.isArray(rewards.achievements) ? rewards.achievements : [],
+      ),
+      JSON.stringify(
+        Array.isArray(rewards.unlockedThemes)
+          ? rewards.unlockedThemes
+          : ["classic", "dark"],
+      ),
+      Math.max(0, Number(rewards.puzzlesSolved) || 0),
+      rewards.dailyRewardDate || null,
+      Math.max(0, Number(rewards.dailyStreak) || 0),
+    );
+    const upsertPack = db.prepare(`
+      INSERT INTO puzzle_progress (user_id, pack_id, solved, completed) VALUES (?, ?, ?, ?)
+      ON CONFLICT(user_id, pack_id) DO UPDATE SET solved = excluded.solved,
+        completed = excluded.completed, updated_at = CURRENT_TIMESTAMP
+    `);
+    for (const [packId, progress] of Object.entries(packs)) {
+      upsertPack.run(
+        req.userId,
+        packId,
+        Math.max(0, Number(progress?.solved) || 0),
+        progress?.completed ? 1 : 0,
+      );
+    }
+  });
+  save();
+  res.json(getFullState(req.userId));
+});
+
+app.post("/api/matches", authenticatedUser, (req, res) => {
+  const entry = req.body || {};
+  if (!["win", "loss"].includes(entry.result))
+    return res.status(400).json({ error: "Invalid result." });
+  db.prepare(
+    `
+    INSERT INTO matches (user_id, result, mode, opponent, moves, seconds, rating_change)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `,
+  ).run(
+    req.userId,
+    entry.result,
+    String(entry.mode || "pc").slice(0, 20),
+    String(entry.opponent || "PC").slice(0, 40),
+    Math.max(0, Number(entry.moves) || 0),
+    Math.max(0, Number(entry.seconds) || 0),
+    Number(entry.ratingChange) || 0,
+  );
+  res.status(201).json({ ok: true });
+});
 
 const P1 = "player1";
 const P2 = "player2";

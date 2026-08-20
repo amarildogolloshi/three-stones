@@ -1,19 +1,18 @@
-# Three Stones v3.2.6 Puzzle Pack Fix Original
+# Three Stones v3.4.0 SQLite
 
-This build is based on the original `three-stones-v3.2-puzzle-packs` files you provided.
+This version adds a persistent SQLite database while preserving all features from v3.3.0.
 
-## Changed
+## SQLite-backed data
 
-- Fixed Puzzle Pack flow:
-  - Wrong move -> Try Again resets the same puzzle.
-  - Correct move -> Next Puzzle.
-  - Last puzzle -> Back to Pack List.
-  - Menu inside a Puzzle Pack game -> Puzzle Pack list.
-  - New Game button hidden inside Puzzle Packs.
-- Fixed puzzle board locking after success or failure.
-- Prevented placing more than 3 player stones in puzzle mode.
-- Preserved the original full `server.js` online room logic.
-- Kept the original service worker active, only renamed the cache to v3.2.6.
+- Accounts with securely hashed passwords
+- Login sessions
+- Player rating and stats
+- Match history
+- Coins, achievements, unlocked themes, and daily rewards
+- Puzzle Pack progress
+- Server-backed leaderboard
+
+Guest players still use localStorage. Signed-in players use SQLite as the persistent source, with localStorage retained as an offline/browser cache.
 
 ## Run
 
@@ -21,11 +20,28 @@ This build is based on the original `three-stones-v3.2-puzzle-packs` files you p
 npm install
 npm install express
 npm install socket.io
+mpm install better-sqlite3
 npm start
 ```
 
-Then open:
+The database is created automatically at:
 
 ```text
-http://localhost:3000
+data/three-stones.db
 ```
+
+Inspect row counts with:
+
+```bash
+npm run db:info
+```
+
+To store the database elsewhere:
+
+```bash
+THREE_STONES_DB_PATH=/persistent/path/three-stones.db npm start
+```
+
+## Production note
+
+Use a persistent disk or volume. Do not commit database files. Back up the database and its WAL files consistently.

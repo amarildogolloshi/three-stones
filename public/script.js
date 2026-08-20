@@ -313,6 +313,9 @@ const d = {};
 ].forEach((id) => (d[id] = $(id)));
 let currentAccountId =
   localStorage.getItem("threeStonesCurrentAccountV301") || null;
+let apiToken = localStorage.getItem("threeStonesApiTokenV340") || null;
+let suppressServerSync = false;
+let serverSyncTimer = null;
 
 function setText(element, value) {
   if (element) element.textContent = value;
@@ -488,6 +491,87 @@ function coach(winner) {
   d.coachPanel.classList.remove("hidden");
 }
 
+async function apiRequest(path, options = {}) {
+  const headers = {
+    "Content-Type": "application/json",
+    ...(options.headers || {}),
+  };
+  if (apiToken) headers.Authorization = `Bearer ${apiToken}`;
+  const response = await fetch(path, { ...options, headers });
+  if (response.status === 204) return null;
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok)
+    throw new Error(data.error || `Request failed (${response.status}).`);
+  return data;
+}
+
+function storeServerSession(payload) {
+  apiToken = payload.token;
+  localStorage.setItem("threeStonesApiTokenV340", apiToken);
+  if (payload.state) applyServerState(payload.state);
+}
+
+function applyServerState(state) {
+  if (!state?.user) return;
+  suppressServerSync = true;
+  try {
+    const account = { ...state.user, history: state.stats?.history || [] };
+    const list = accounts().filter((item) => item.id !== account.id);
+    list.push(account);
+    saveAccounts(list);
+    currentAccountId = account.id;
+    localStorage.setItem("threeStonesCurrentAccountV301", currentAccountId);
+    saveStats({
+      rating: state.stats?.rating || 1000,
+      games: state.stats?.games || 0,
+      wins: state.stats?.wins || 0,
+      losses: state.stats?.losses || 0,
+      bestTime: state.stats?.bestTime ?? null,
+      fewestMoves: state.stats?.fewestMoves ?? null,
+      history: state.stats?.history || [],
+    });
+    if (state.rewards) saveRewards(state.rewards);
+    if (state.puzzleProgress) savePuzzlePackProgress(state.puzzleProgress);
+    playerName = account.username;
+    d.playerNameInput.value = account.username;
+  } finally {
+    suppressServerSync = false;
+  }
+  updateAccountUI();
+  updateStatsUI();
+  updateRewardBadges();
+}
+
+function scheduleServerSync() {
+  if (suppressServerSync || !apiToken || !currentAccountId) return;
+  clearTimeout(serverSyncTimer);
+  serverSyncTimer = setTimeout(async () => {
+    try {
+      await apiRequest("/api/state", {
+        method: "PUT",
+        body: JSON.stringify({
+          stats: loadStats(),
+          rewards: loadRewards(),
+          puzzleProgress: loadPuzzlePackProgress(),
+        }),
+      });
+    } catch (error) {
+      console.warn("SQLite sync postponed:", error.message);
+    }
+  }, 250);
+}
+
+async function restoreServerSession() {
+  if (!apiToken) return;
+  try {
+    const state = await apiRequest("/api/me");
+    applyServerState(state);
+  } catch {
+    apiToken = null;
+    localStorage.removeItem("threeStonesApiTokenV340");
+  }
+}
+
 function accounts() {
   return JSON.parse(localStorage.getItem("threeStonesAccountsV301") || "[]");
 }
@@ -575,6 +659,7 @@ function loadRewards() {
 
 function saveRewards(rewards) {
   localStorage.setItem(rewardKey(), JSON.stringify(rewards));
+  scheduleServerSync();
 }
 
 function isThemeUnlocked(themeId) {
@@ -732,6 +817,7 @@ function loadStats() {
 }
 function saveStats(s) {
   localStorage.setItem("threeStonesStatsV301", JSON.stringify(s));
+  scheduleServerSync();
 }
 function syncAccount() {
   const acc = currentAccount();
@@ -756,59 +842,54 @@ function loadAccountStats(acc) {
   });
   updateStatsUI();
 }
-function createAccount() {
-  const username = d.registerUsernameInput.value.trim(),
-    password = d.registerPasswordInput.value.trim(),
-    avatar = d.avatarSelect.value;
-  if (!username || !password) {
-    d.registerStatus.textContent = "Enter a username and password.";
-    return;
+async function createAccount() {
+  const username = d.registerUsernameInput.value.trim();
+  const password = d.registerPasswordInput.value.trim();
+  const avatar = d.avatarSelect.value;
+  setText(d.registerStatus, "Creating account...");
+  try {
+    const payload = await apiRequest("/api/register", {
+      method: "POST",
+      body: JSON.stringify({ username, password, avatar }),
+    });
+    storeServerSession(payload);
+    setText(d.registerStatus, "Account created and saved to SQLite.");
+    showScreen("homeScreen");
+  } catch (error) {
+    setText(d.registerStatus, error.message);
   }
-  const a = accounts();
-  if (a.some((x) => x.username.toLowerCase() === username.toLowerCase())) {
-    d.registerStatus.textContent = "That username already exists.";
-    return;
-  }
-  const acc = {
-    id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()),
-    username,
-    password,
-    avatar,
-    ...defaultStats(),
-  };
-  a.push(acc);
-  saveAccounts(a);
-  currentAccountId = acc.id;
-  localStorage.setItem("threeStonesCurrentAccountV301", currentAccountId);
-  playerName = username;
-  d.playerNameInput.value = username;
-  loadAccountStats(acc);
-  updateAccountUI();
-  showScreen("homeScreen");
 }
-function loginAccount() {
-  const u = d.loginUsernameInput.value.trim(),
-    p = d.loginPasswordInput.value.trim();
-  const acc = accounts().find(
-    (x) => x.username.toLowerCase() === u.toLowerCase() && x.password === p,
-  );
-  if (!acc) {
-    d.loginStatus.textContent = "Username or password is not correct.";
-    return;
+
+async function loginAccount() {
+  const username = d.loginUsernameInput.value.trim();
+  const password = d.loginPasswordInput.value.trim();
+  setText(d.loginStatus, "Signing in...");
+  try {
+    const payload = await apiRequest("/api/login", {
+      method: "POST",
+      body: JSON.stringify({ username, password }),
+    });
+    storeServerSession(payload);
+    setText(d.loginStatus, "Signed in.");
+    showScreen("homeScreen");
+  } catch (error) {
+    setText(d.loginStatus, error.message);
   }
-  currentAccountId = acc.id;
-  localStorage.setItem("threeStonesCurrentAccountV301", currentAccountId);
-  playerName = acc.username;
-  d.playerNameInput.value = acc.username;
-  loadAccountStats(acc);
-  updateAccountUI();
-  showScreen("homeScreen");
 }
-function logoutAccount() {
+
+async function logoutAccount() {
+  try {
+    if (apiToken) await apiRequest("/api/logout", { method: "POST" });
+  } catch (error) {
+    console.warn("Server logout failed:", error.message);
+  }
+  apiToken = null;
   currentAccountId = null;
+  localStorage.removeItem("threeStonesApiTokenV340");
   localStorage.removeItem("threeStonesCurrentAccountV301");
   updateAccountUI();
 }
+
 function updateAccountUI() {
   const acc = currentAccount();
   if (!acc) {
@@ -842,24 +923,32 @@ function profile() {
     a.fewestMoves == null ? "--" : a.fewestMoves;
   showScreen("profileScreen");
 }
-function leaderboard() {
-  const a = accounts().sort((x, y) => (y.rating || 1000) - (x.rating || 1000));
-  d.leaderboardList.innerHTML = "";
-  if (!a.length) {
-    d.leaderboardList.innerHTML =
-      '<p class="history-meta">No accounts yet. Register to join the leaderboard.</p>';
-    showScreen("leaderboardScreen");
-    return;
-  }
-  a.forEach((x, i) => {
-    const wr = x.games ? Math.round((x.wins / x.games) * 100) : 0;
-    const row = document.createElement("div");
-    row.className = "leaderboard-row";
-    row.innerHTML = `<div class="leaderboard-rank">${i + 1}</div><div><div class="leaderboard-name">${x.avatar} ${x.username}</div><div class="leaderboard-meta">${rankName(x.rating || 1000)} • ${x.wins || 0} wins • ${wr}% win rate</div></div><div class="leaderboard-rating">${x.rating || 1000} RP</div>`;
-    d.leaderboardList.appendChild(row);
-  });
+async function leaderboard() {
+  d.leaderboardList.innerHTML =
+    '<p class="history-meta">Loading leaderboard...</p>';
   showScreen("leaderboardScreen");
+  try {
+    const rows = await apiRequest("/api/leaderboard");
+    d.leaderboardList.innerHTML = "";
+    if (!rows.length) {
+      d.leaderboardList.innerHTML =
+        '<p class="history-meta">No accounts yet. Register to join the leaderboard.</p>';
+      return;
+    }
+    rows.forEach((account, index) => {
+      const wr = account.games
+        ? Math.round((account.wins / account.games) * 100)
+        : 0;
+      const row = document.createElement("div");
+      row.className = "leaderboard-row";
+      row.innerHTML = `<div class="leaderboard-rank">${index + 1}</div><div><div class="leaderboard-name">${account.avatar} ${account.username}</div><div class="leaderboard-meta">${rankName(account.rating || 1000)} • ${account.wins || 0} wins • ${wr}% win rate</div></div><div class="leaderboard-rating">${account.rating || 1000} RP</div>`;
+      d.leaderboardList.appendChild(row);
+    });
+  } catch (error) {
+    d.leaderboardList.innerHTML = `<p class="history-meta">${error.message}</p>`;
+  }
 }
+
 function record(result, kind, opp) {
   const s = loadStats();
   const change =
@@ -892,6 +981,21 @@ function record(result, kind, opp) {
   updateStatsUI();
   syncAccount();
   awardCoins(result === "win" ? (kind === "online" ? 30 : 20) : 5);
+  if (apiToken) {
+    apiRequest("/api/matches", {
+      method: "POST",
+      body: JSON.stringify({
+        result,
+        mode: kind,
+        opponent: opp,
+        moves,
+        seconds: elapsed,
+        ratingChange: change,
+      }),
+    }).catch((error) =>
+      console.warn("Match history sync failed:", error.message),
+    );
+  }
 }
 function updateStatsUI() {
   const s = loadStats();
@@ -1245,6 +1349,7 @@ function loadPuzzlePackProgress() {
 
 function savePuzzlePackProgress(progress) {
   localStorage.setItem(puzzlePackKey(), JSON.stringify(progress));
+  scheduleServerSync();
 }
 
 function showPuzzlePacks() {
@@ -1875,6 +1980,7 @@ wire();
 updateStaticSafeUi();
 wireSocket();
 registerPwa();
+restoreServerSession();
 const match = location.pathname.match(/^\/room\/([A-Z0-9]+)$/i);
 if (match) {
   if (ONLINE_AVAILABLE) {
