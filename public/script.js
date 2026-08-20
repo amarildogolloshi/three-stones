@@ -10,6 +10,27 @@ const socket = ONLINE_AVAILABLE
 const P1 = "player1";
 const P2 = "player2";
 const MAX = 3;
+const GUEST_NAME_KEY = "threeStonesGuestNameV341";
+
+function generateGuestName() {
+  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  const bytes = new Uint8Array(6);
+  crypto.getRandomValues(bytes);
+  const suffix = Array.from(
+    bytes,
+    (value) => alphabet[value % alphabet.length],
+  ).join("");
+  return `Guest-${suffix}`;
+}
+
+function getGuestName() {
+  let guestName = localStorage.getItem(GUEST_NAME_KEY);
+  if (!guestName || !/^Guest-[A-Z2-9]{6}$/.test(guestName)) {
+    guestName = generateGuestName();
+    localStorage.setItem(GUEST_NAME_KEY, guestName);
+  }
+  return guestName;
+}
 const $ = (id) => document.getElementById(id);
 const nodes = [
   { id: 0, x: 15, y: 15 },
@@ -159,7 +180,7 @@ let activePuzzlePack = null;
 let activePuzzlePackPosition = 0;
 let puzzleSolved = false;
 let mode = "pc",
-  playerName = "Player",
+  playerName = getGuestName(),
   difficulty = "medium",
   soundOn = localStorage.getItem("soundOnV330") !== "false",
   onlinePlayer = null,
@@ -184,7 +205,6 @@ let elapsed = 0,
   hintNode = null;
 const d = {};
 [
-  "continueBtn",
   "playPcBtn",
   "difficultyModal",
   "closeDifficultyModalBtn",
@@ -226,7 +246,6 @@ const d = {};
   "roomLinkInput",
   "friendStatus",
   "randomStatus",
-  "playerNameInput",
   "difficultySelect",
   "soundToggle",
   "moveCounter",
@@ -533,7 +552,7 @@ function applyServerState(state) {
     if (state.rewards) saveRewards(state.rewards);
     if (state.puzzleProgress) savePuzzlePackProgress(state.puzzleProgress);
     playerName = account.username;
-    d.playerNameInput.value = account.username;
+    if (d.playerNameInput) d.playerNameInput.value = account.username;
   } finally {
     suppressServerSync = false;
   }
@@ -887,13 +906,14 @@ async function logoutAccount() {
   currentAccountId = null;
   localStorage.removeItem("threeStonesApiTokenV340");
   localStorage.removeItem("threeStonesCurrentAccountV301");
+  playerName = getGuestName();
   updateAccountUI();
 }
 
 function updateAccountUI() {
   const acc = currentAccount();
   if (!acc) {
-    d.accountBadge.textContent = "Playing as Guest";
+    d.accountBadge.textContent = `Playing as ${playerName}`;
     d.loginBtn.classList.remove("hidden");
     d.registerBtn.classList.remove("hidden");
     d.profileBtn.classList.add("hidden");
@@ -1709,10 +1729,6 @@ function startSelectedPcGame() {
 }
 
 function wire() {
-  d.continueBtn?.addEventListener("click", () => {
-    playerName = d.playerNameInput.value.trim() || "Player";
-    showScreen("homeScreen");
-  });
   if (d.soundToggle) {
     d.soundToggle.checked = soundOn;
     d.soundToggle.addEventListener("change", () => {
@@ -1968,7 +1984,7 @@ updateRewardBadges();
 const acc = currentAccount();
 if (acc) {
   playerName = acc.username;
-  d.playerNameInput.value = acc.username;
+  if (d.playerNameInput) d.playerNameInput.value = acc.username;
   loadAccountStats(acc);
 }
 updateAccountUI();
