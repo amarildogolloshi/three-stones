@@ -525,6 +525,20 @@
           </button>
         </div>
       </div>
+
+      <div
+        id="rewardToast"
+        class="reward-toast hidden"
+        role="status"
+        aria-live="polite"
+      >
+        <div class="reward-toast-icon">🪙</div>
+        <div class="reward-toast-copy">
+          <strong id="rewardToastTitle">Reward earned!</strong>
+          <span id="rewardToastAmount">+0 Coins</span>
+          <small id="rewardToastDetail"></small>
+        </div>
+      </div>
     </main>
     <script src="/socket.io/socket.io.js"></script>
     <script src="script.js"></script>

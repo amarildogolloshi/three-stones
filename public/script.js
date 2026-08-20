@@ -202,7 +202,8 @@ let elapsed = 0,
   puzzleIndex = 0,
   tournament = null,
   deferredInstall = null,
-  hintNode = null;
+  hintNode = null,
+  rewardToastTimer = null;
 const d = {};
 [
   "playPcBtn",
@@ -297,6 +298,10 @@ const d = {};
   "claimDailyRewardBtn",
   "dailyRewardStatus",
   "rewardThemeList",
+  "rewardToast",
+  "rewardToastTitle",
+  "rewardToastAmount",
+  "rewardToastDetail",
   "logoutBtn",
   "registerUsernameInput",
   "registerPasswordInput",
@@ -692,14 +697,35 @@ function unlockAchievement(id) {
   rewards.coins += 25;
   saveRewards(rewards);
   updateRewardBadges();
+  showRewardToast(
+    25,
+    "Achievement unlocked!",
+    ACHIEVEMENTS.find((item) => item.id === id)?.title || "Achievement reward",
+  );
 }
 
-function awardCoins(amount) {
+function showRewardToast(amount, title = "Reward earned!", detail = "") {
+  if (!d.rewardToast || amount <= 0) return;
+  clearTimeout(rewardToastTimer);
+  setText(d.rewardToastTitle, title);
+  setText(d.rewardToastAmount, `+${amount} ${amount === 1 ? "Coin" : "Coins"}`);
+  setText(d.rewardToastDetail, detail);
+  d.rewardToast.classList.remove("hidden", "reward-toast-show");
+  void d.rewardToast.offsetWidth;
+  d.rewardToast.classList.add("reward-toast-show");
+  rewardToastTimer = setTimeout(() => {
+    d.rewardToast.classList.remove("reward-toast-show");
+    setTimeout(() => d.rewardToast.classList.add("hidden"), 250);
+  }, 3200);
+}
+
+function awardCoins(amount, title = "Coins earned!", detail = "") {
   const rewards = loadRewards();
   rewards.coins += amount;
   saveRewards(rewards);
   evaluateAchievements();
   updateRewardBadges();
+  showRewardToast(amount, title, detail);
 }
 
 function evaluateAchievements() {
@@ -801,16 +827,28 @@ function claimDailyReward() {
   );
   evaluateAchievements();
   updateRewardBadges();
+  showRewardToast(
+    bonus,
+    "Daily reward claimed!",
+    `Daily streak: ${rewards.dailyStreak}`,
+  );
   renderRewardsStore();
 }
 
 function addPuzzleReward() {
   const rewards = loadRewards();
+  const amount = activePuzzle?.isPractice ? 10 : 25;
   rewards.puzzlesSolved += 1;
-  rewards.coins += activePuzzle?.isPractice ? 10 : 25;
+  rewards.coins += amount;
   saveRewards(rewards);
   evaluateAchievements();
   updateRewardBadges();
+  showRewardToast(
+    amount,
+    activePuzzle?.isPractice ? "Puzzle solved!" : "Daily puzzle solved!",
+    activePuzzle?.title || "Puzzle reward",
+  );
+  return amount;
 }
 
 function updateThemeOptions() {
@@ -1000,7 +1038,12 @@ function record(result, kind, opp) {
   saveStats(s);
   updateStatsUI();
   syncAccount();
-  awardCoins(result === "win" ? (kind === "online" ? 30 : 20) : 5);
+  const coinReward = result === "win" ? (kind === "online" ? 30 : 20) : 5;
+  awardCoins(
+    coinReward,
+    result === "win" ? "Victory reward!" : "Match completed",
+    `${kind === "online" ? "Online" : "PC"} match`,
+  );
   if (apiToken) {
     apiRequest("/api/matches", {
       method: "POST",
@@ -1422,7 +1465,11 @@ function completePuzzlePackStep() {
   savePuzzlePackProgress(progress);
 
   if (nextSolved >= total && !alreadyComplete) {
-    awardCoins(activePuzzlePack.reward);
+    awardCoins(
+      activePuzzlePack.reward,
+      "Puzzle Pack completed!",
+      activePuzzlePack.title,
+    );
     setText(
       d.message,
       `${activePuzzlePack.title} complete! Bonus: ${activePuzzlePack.reward} coins.`,

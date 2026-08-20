@@ -1,4 +1,4 @@
-const CACHE_NAME = "three-stones-v3-4-2-random-guest-back-button-cache";
+const CACHE_NAME = "three-stones-v3-4-3-reward-popup-cache";
 const APP_SHELL = [
   "/",
   "/index.html",
